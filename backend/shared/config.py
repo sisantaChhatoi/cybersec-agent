@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     mongodb_db: str = "scamcall"
     jwt_secret: str = "dev-secret-change-me"
     jwt_algorithm: str = "HS256"
+    groq_chat_model: str = "llama-3.3-70b-versatile"
+    chat_history_limit: int = 6
 
 
 settings = Settings()
