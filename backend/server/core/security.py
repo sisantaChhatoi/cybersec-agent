@@ -5,7 +5,7 @@ import jwt
 
 from shared.config import settings
 
-_ITERATIONS = 100_000
+_ITERATIONS = 10_000
 
 
 def hash_password(password: str) -> str:
