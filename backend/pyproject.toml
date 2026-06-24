@@ -15,3 +15,9 @@ dependencies = [
     "sarvamai>=0.1.28",
     "websockets>=16.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.6.0",
+    "ruff>=0.15.19",
+]

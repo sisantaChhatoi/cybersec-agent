@@ -1,0 +1,9 @@
+.venv
+.env
+.ruff_cache
+__pycache__
+*.py[oc]
+test
+main.py
+CLAUDE.md
+docker-compose.yml

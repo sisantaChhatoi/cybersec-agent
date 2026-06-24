@@ -2,6 +2,14 @@
 
 Context file for Claude Code. Place at `backend/CLAUDE.md`.
 
+## Code style
+
+- Clean, PEP 8 / PEP 20 code. Type-annotate signatures.
+- **Minimal comments.** No verbose open-source-style docstrings or narration.
+  Comment only non-obvious *why*, not *what*. Let names carry intent.
+- Formatting/linting via `ruff` (`ruff-format` + `ruff-check`), enforced by a
+  pre-commit hook (`.pre-commit-config.yaml` at repo root). Run `pre-commit install` once.
+
 ## What this is
 
 A real-time agent that joins a phone conference call, listens, and warns a user
