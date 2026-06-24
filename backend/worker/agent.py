@@ -1,10 +1,8 @@
 import logging
-from pathlib import Path
 
-from dotenv import load_dotenv
 from livekit.agents import JobContext, WorkerOptions, cli
 
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+import shared.config  # noqa: F401  (loads .env into the environment on import)
 
 logger = logging.getLogger("scamcall.worker")
 

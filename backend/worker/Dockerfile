@@ -10,6 +10,7 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-install-project --no-dev
 
+COPY shared/ ./shared/
 COPY worker/ ./worker/
 
 CMD ["python", "-m", "worker.agent", "start"]
