@@ -2,6 +2,14 @@ import json
 import logging
 
 from groq import AsyncGroq
+from groq.types.chat import (
+    ChatCompletionMessageParam,
+    ChatCompletionSystemMessageParam,
+    ChatCompletionUserMessageParam,
+)
+from groq.types.chat.completion_create_params import (
+    ResponseFormatResponseFormatJsonObject as JsonObjectFormat,
+)
 from pydantic import BaseModel, Field, ValidationError
 
 logger = logging.getLogger("scamcall.detector")
@@ -36,15 +44,17 @@ class ScamDetector:
         self.threshold = threshold
 
     async def detect(self, transcript: str) -> Detection:
+        messages: list[ChatCompletionMessageParam] = [
+            ChatCompletionSystemMessageParam(role="system", content=_SYSTEM_PROMPT),
+            ChatCompletionUserMessageParam(role="user", content=transcript),
+        ]
+        response_format = JsonObjectFormat(type="json_object")
         try:
             completion = await self._client.chat.completions.create(
                 model=self._model,
                 temperature=0.0,
-                response_format={"type": "json_object"},
-                messages=[
-                    {"role": "system", "content": _SYSTEM_PROMPT},
-                    {"role": "user", "content": transcript},
-                ],
+                response_format=response_format,
+                messages=messages,
             )
             raw = completion.choices[0].message.content or "{}"
             return Detection.model_validate_json(raw)

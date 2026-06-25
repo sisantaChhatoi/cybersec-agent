@@ -88,6 +88,8 @@ class SarvamSTT(SpeechToText):
         transcript = getattr(data, "transcript", None) if data is not None else None
         if not transcript:
             return None
+        language = getattr(data, "language_code", None)
         return TranscriptEvent(
-            text=transcript, language=getattr(data, "language_code", None)
+            text=str(transcript),
+            language=str(language) if language is not None else None,
         )

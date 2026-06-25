@@ -28,9 +28,11 @@ class ChatbotEngine:
 
     @property
     def llm(self) -> ChatGroq:
-        if self._llm is None:
-            self._llm = ChatGroq(model=self._model, temperature=self._temperature)
-        return self._llm
+        llm = self._llm
+        if llm is None:
+            llm = ChatGroq(model=self._model, temperature=self._temperature)
+            self._llm = llm
+        return llm
 
     async def stream_reply(
         self, history: list[BaseMessage], user_message: str
