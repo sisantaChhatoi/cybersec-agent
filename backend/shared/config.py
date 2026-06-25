@@ -18,5 +18,20 @@ class Settings(BaseSettings):
     groq_chat_model: str = "llama-3.3-70b-versatile"
     chat_history_limit: int = 6
 
+    groq_api_key: str = ""
+    sarvam_api_key: str = ""
+
+    stt_provider: str = "sarvam"
+    stt_language_code: str = "unknown"
+    stt_model: str = "saaras:v3"
+    stt_sample_rate: int = 16000
+
+    detector_model: str = "llama-3.3-70b-versatile"
+    detector_threshold: float = 0.6
+    detect_interval_seconds: float = 4.0
+    transcript_window_seconds: float = 45.0
+    min_transcript_chars: int = 40
+    consecutive_positives: int = 2
+
 
 settings = Settings()
