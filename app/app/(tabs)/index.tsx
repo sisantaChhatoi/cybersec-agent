@@ -49,9 +49,18 @@ const CAPABILITIES = [
 ];
 
 const STEPS = [
-  { title: 'Add the guard to your call', description: 'A tap brings the agent into an active call.' },
-  { title: 'It listens and analyzes', description: 'Speech is transcribed and checked for scam tactics live.' },
-  { title: 'You get an explained warning', description: 'A push alert names the threat and the red flags.' },
+  {
+    title: 'Add the guard to your call',
+    description: 'A tap brings the agent into an active call.',
+  },
+  {
+    title: 'It listens and analyzes',
+    description: 'Speech is transcribed and checked for scam tactics live.',
+  },
+  {
+    title: 'You get an explained warning',
+    description: 'A push alert names the threat and the red flags.',
+  },
 ];
 
 export default function LandingScreen() {
@@ -103,8 +112,8 @@ function Hero() {
         Scam calls, caught before you fall for them.
       </AppText>
       <AppText variant="body" color="rgba(255,255,255,0.88)">
-        {APP_NAME} puts an AI agent on the line that spots fraud as it happens — and warns
-        you in seconds, in words you understand.
+        {APP_NAME} puts an AI agent on the line that spots fraud as it happens — and warns you in
+        seconds, in words you understand.
       </AppText>
 
       <Button label="Activate protection" icon="shield-checkmark" variant="secondary" />
@@ -124,9 +133,7 @@ function Capabilities() {
         <View style={{ gap: space.lg }}>
           {CAPABILITIES.map((c, i) => (
             <View key={c.title} style={{ gap: space.lg }}>
-              {i > 0 ? (
-                <View style={{ height: 1, backgroundColor: colors.border }} />
-              ) : null}
+              {i > 0 ? <View style={{ height: 1, backgroundColor: colors.border }} /> : null}
               <FeatureRow icon={c.icon} title={c.title} description={c.description} />
             </View>
           ))}
@@ -143,7 +150,9 @@ function HowItWorks() {
       <Card>
         <View style={{ gap: space.xl }}>
           {STEPS.map((s, i) => (
-            <View key={s.title} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
+            <View
+              key={s.title}
+              style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space.md }}>
               <View
                 style={{
                   width: 28,

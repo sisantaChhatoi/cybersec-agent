@@ -47,9 +47,7 @@ export function ChipSelect({
               backgroundColor: selected ? colors.brandTint : colors.surface,
               opacity: disabled ? 0.4 : pressed ? 0.8 : 1,
             })}>
-            {selected ? (
-              <Ionicons name="checkmark" size={14} color={colors.brand} />
-            ) : null}
+            {selected ? <Ionicons name="checkmark" size={14} color={colors.brand} /> : null}
             <AppText variant="bodyStrong" color={selected ? colors.brand : colors.body}>
               {opt}
             </AppText>

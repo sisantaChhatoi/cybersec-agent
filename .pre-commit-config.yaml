@@ -5,3 +5,18 @@ repos:
       - id: ruff-check
         args: [--fix]
       - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier (app)
+        entry: bash -c 'cd app && bun run format'
+        language: system
+        files: ^app/.*\.(ts|tsx|js|jsx|json)$
+        pass_filenames: false
+      - id: eslint
+        name: eslint (app)
+        entry: bash -c 'cd app && bunx eslint .'
+        language: system
+        files: ^app/.*\.(ts|tsx|js|jsx)$
+        pass_filenames: false

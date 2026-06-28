@@ -8,17 +8,17 @@ Context file for Claude Code. Place at `app/CLAUDE.md`.
 
 The mobile app a protected user runs. It receives real-time **scam warnings** as
 push notifications while the detection agent listens to a call the user has added
-it to. The app is notification-first — the alert *is* the product.
+it to. The app is notification-first — the alert _is_ the product.
 
 ## Stack
 
-| Concern        | Choice                        | Notes |
-|----------------|-------------------------------|-------|
-| Framework      | React Native + **Expo** (managed) | Web-dev friendly, fast iteration, modern UI. |
-| Dev loop       | Expo Go (`npx expo start`)    | Scan QR, live reload on a real phone. No native build during dev. |
-| Demo build     | EAS Build → **APK**           | `eas build -p android --profile preview` → installable APK. Free tier. |
-| Notifications  | Expo Push Notifications       | One token for Android/iOS; Expo handles FCM/APNs underneath. Free. |
-| Live in-app    | WebSocket to FastAPI (optional)| For foreground alerts while app is open. |
+| Concern       | Choice                            | Notes                                                                  |
+| ------------- | --------------------------------- | ---------------------------------------------------------------------- |
+| Framework     | React Native + **Expo** (managed) | Web-dev friendly, fast iteration, modern UI.                           |
+| Dev loop      | Expo Go (`npx expo start`)        | Scan QR, live reload on a real phone. No native build during dev.      |
+| Demo build    | EAS Build → **APK**               | `eas build -p android --profile preview` → installable APK. Free tier. |
+| Notifications | Expo Push Notifications           | One token for Android/iOS; Expo handles FCM/APNs underneath. Free.     |
+| Live in-app   | WebSocket to FastAPI (optional)   | For foreground alerts while app is open.                               |
 
 ## Notification flow (how alerts reach the phone)
 

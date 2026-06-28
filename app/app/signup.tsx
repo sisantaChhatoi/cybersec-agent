@@ -26,29 +26,30 @@ import { saveToken } from '@/lib/auth';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
-const STEPS: { label: string; accent: string; icon: IconName; title: string; subtitle: string }[] = [
-  {
-    label: 'Step 1 of 3',
-    accent: '#D97706',
-    icon: 'shield-checkmark',
-    title: 'Let’s get you set up',
-    subtitle: 'Your name, number, and a password to secure your account.',
-  },
-  {
-    label: 'Step 2 of 3',
-    accent: '#7C3AED',
-    icon: 'language-outline',
-    title: 'Languages you speak',
-    subtitle: 'Pick up to three — the first is your primary. We listen for scams in these.',
-  },
-  {
-    label: 'Step 3 of 3',
-    accent: '#0D9488',
-    icon: 'location-outline',
-    title: 'Where you’re based',
-    subtitle: 'Helps us tune protection to your region.',
-  },
-];
+const STEPS: { label: string; accent: string; icon: IconName; title: string; subtitle: string }[] =
+  [
+    {
+      label: 'Step 1 of 3',
+      accent: '#D97706',
+      icon: 'shield-checkmark',
+      title: 'Let’s get you set up',
+      subtitle: 'Your name, number, and a password to secure your account.',
+    },
+    {
+      label: 'Step 2 of 3',
+      accent: '#7C3AED',
+      icon: 'language-outline',
+      title: 'Languages you speak',
+      subtitle: 'Pick up to three — the first is your primary. We listen for scams in these.',
+    },
+    {
+      label: 'Step 3 of 3',
+      accent: '#0D9488',
+      icon: 'location-outline',
+      title: 'Where you’re based',
+      subtitle: 'Helps us tune protection to your region.',
+    },
+  ];
 
 export default function Signup() {
   const router = useRouter();
@@ -135,8 +136,7 @@ export default function Signup() {
       await saveToken(res.access_token);
       router.replace('/(tabs)');
     } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : 'Something went wrong. Please try again.';
+      const msg = err instanceof ApiError ? err.message : 'Something went wrong. Please try again.';
       setFormError(msg);
     } finally {
       setSubmitting(false);
@@ -217,7 +217,9 @@ export default function Signup() {
             ) : null}
             <View style={{ flexDirection: 'row', gap: space.md }}>
               {step > 0 ? (
-                <Pressable onPress={onBack} style={({ pressed }) => [styles.back, { opacity: pressed ? 0.7 : 1 }]}>
+                <Pressable
+                  onPress={onBack}
+                  style={({ pressed }) => [styles.back, { opacity: pressed ? 0.7 : 1 }]}>
                   <Ionicons name="arrow-back" size={18} color={colors.ink} />
                 </Pressable>
               ) : null}

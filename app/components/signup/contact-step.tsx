@@ -67,7 +67,12 @@ export function ContactStep({
         <Pressable
           onPress={() => setShowPassword((s) => !s)}
           hitSlop={8}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, alignSelf: 'flex-start' }}>
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: space.xs,
+            alignSelf: 'flex-start',
+          }}>
           <Ionicons
             name={showPassword ? 'eye-off-outline' : 'eye-outline'}
             size={15}

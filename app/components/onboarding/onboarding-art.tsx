@@ -42,20 +42,41 @@ const C = {
   ink: '#334155',
 };
 
-const canvas = (w: number, h: number): ViewStyle => ({ width: w, height: h, alignItems: 'center', justifyContent: 'center' });
+const canvas = (w: number, h: number): ViewStyle => ({
+  width: w,
+  height: h,
+  alignItems: 'center',
+  justifyContent: 'center',
+});
 
 // ── shared motion helpers ──────────────────────────────────────────────────
 
 function PulseRing({ size, color, delay = 0 }: { size: number; color: string; delay?: number }) {
   const p = useSharedValue(0);
   useEffect(() => {
-    p.value = withDelay(delay, withRepeat(withTiming(1, { duration: 2400, easing: Easing.out(Easing.quad) }), -1, false));
+    p.value = withDelay(
+      delay,
+      withRepeat(withTiming(1, { duration: 2400, easing: Easing.out(Easing.quad) }), -1, false),
+    );
   }, [p, delay]);
-  const style = useAnimatedStyle(() => ({ transform: [{ scale: 0.5 + p.value }], opacity: (1 - p.value) * 0.6 }));
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: 0.5 + p.value }],
+    opacity: (1 - p.value) * 0.6,
+  }));
   return (
     <Animated.View
       pointerEvents="none"
-      style={[{ position: 'absolute', width: size, height: size, borderRadius: size / 2, borderWidth: 2, borderColor: color }, style]}
+      style={[
+        {
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: 2,
+          borderColor: color,
+        },
+        style,
+      ]}
     />
   );
 }
@@ -63,7 +84,11 @@ function PulseRing({ size, color, delay = 0 }: { size: number; color: string; de
 function Float({ children, amplitude = 7 }: { children: React.ReactNode; amplitude?: number }) {
   const f = useSharedValue(0);
   useEffect(() => {
-    f.value = withRepeat(withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.quad) }), -1, true);
+    f.value = withRepeat(
+      withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.quad) }),
+      -1,
+      true,
+    );
   }, [f]);
   const style = useAnimatedStyle(() => ({ transform: [{ translateY: -amplitude * f.value }] }));
   return <Animated.View style={style}>{children}</Animated.View>;
@@ -85,11 +110,15 @@ function Packet({
   size?: number;
   delay?: number;
   duration?: number;
-  interceptAt?: number; // 0..1 — fade out (blocked) at this progress instead of reaching `to`
+  // 0..1 — fade out (blocked) at this progress instead of reaching `to`
+  interceptAt?: number;
 }) {
   const p = useSharedValue(0);
   useEffect(() => {
-    p.value = withDelay(delay, withRepeat(withTiming(1, { duration, easing: Easing.inOut(Easing.quad) }), -1, false));
+    p.value = withDelay(
+      delay,
+      withRepeat(withTiming(1, { duration, easing: Easing.inOut(Easing.quad) }), -1, false),
+    );
   }, [p, delay, duration]);
   const style = useAnimatedStyle(() => {
     const end = interceptAt ?? 1;
@@ -105,7 +134,20 @@ function Packet({
       ],
     };
   });
-  return <Animated.View style={[{ position: 'absolute', width: size, height: size, borderRadius: size / 2, backgroundColor: color }, style]} />;
+  return (
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: color,
+        },
+        style,
+      ]}
+    />
+  );
 }
 
 /** Circular node with an icon, used as an absolute-positioned overlay. */
@@ -155,8 +197,24 @@ export function CallFlowArt() {
   return (
     <View style={canvas(300, 240)}>
       <Svg width={300} height={240} style={{ position: 'absolute' }}>
-        <Line x1={scammer.x} y1={scammer.y} x2={agent.x} y2={agent.y} stroke={C.line} strokeWidth={2} strokeDasharray="5 6" />
-        <Line x1={agent.x} y1={agent.y} x2={caller.x} y2={caller.y} stroke={C.line} strokeWidth={2} strokeDasharray="5 6" />
+        <Line
+          x1={scammer.x}
+          y1={scammer.y}
+          x2={agent.x}
+          y2={agent.y}
+          stroke={C.line}
+          strokeWidth={2}
+          strokeDasharray="5 6"
+        />
+        <Line
+          x1={agent.x}
+          y1={agent.y}
+          x2={caller.x}
+          y2={caller.y}
+          stroke={C.line}
+          strokeWidth={2}
+          strokeDasharray="5 6"
+        />
       </Svg>
 
       {/* scammer attempts get intercepted at the agent */}
@@ -166,14 +224,38 @@ export function CallFlowArt() {
       <Packet from={agent} to={caller} color={C.teal} delay={300} size={8} />
       <Packet from={agent} to={caller} color={C.teal} delay={1000} size={8} />
 
-      <Node x={scammer.x} y={scammer.y} d={50} bg={C.redSoft} icon="warning" iconColor={C.red} border="rgba(239,68,68,0.3)" />
-      <Node x={caller.x} y={caller.y} d={50} bg="rgba(14,165,233,0.12)" icon="call" iconColor={C.sky} border="rgba(14,165,233,0.3)" />
+      <Node
+        x={scammer.x}
+        y={scammer.y}
+        d={50}
+        bg={C.redSoft}
+        icon="warning"
+        iconColor={C.red}
+        border="rgba(239,68,68,0.3)"
+      />
+      <Node
+        x={caller.x}
+        y={caller.y}
+        d={50}
+        bg="rgba(14,165,233,0.12)"
+        icon="call"
+        iconColor={C.sky}
+        border="rgba(14,165,233,0.3)"
+      />
 
       {/* agent (you) — emphasised */}
       <PulseRing size={92} color="rgba(79,70,229,0.4)" />
       <View style={{ position: 'absolute', left: agent.x - 33, top: agent.y - 33 }}>
         <Float amplitude={5}>
-          <View style={{ width: 66, height: 66, borderRadius: 33, backgroundColor: C.indigo, alignItems: 'center', justifyContent: 'center' }}>
+          <View
+            style={{
+              width: 66,
+              height: 66,
+              borderRadius: 33,
+              backgroundColor: C.indigo,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
             <Ionicons name="shield-checkmark" size={32} color="#FFFFFF" />
           </View>
         </Float>
@@ -198,13 +280,24 @@ const GNODES = [
 function GraphNode({ x, y, c, delay }: { x: number; y: number; c: string; delay: number }) {
   const s = useSharedValue(0);
   useEffect(() => {
-    s.value = withDelay(delay, withTiming(1, { duration: 480, easing: Easing.out(Easing.back(1.6)) }));
+    s.value = withDelay(
+      delay,
+      withTiming(1, { duration: 480, easing: Easing.out(Easing.back(1.6)) }),
+    );
   }, [s, delay]);
   const props = useAnimatedProps(() => ({ r: 9 * s.value, opacity: s.value }));
   return <ACircle cx={x} cy={y} fill={c} animatedProps={props} />;
 }
 
-function GraphEdge({ a, b, delay }: { a: { x: number; y: number }; b: { x: number; y: number }; delay: number }) {
+function GraphEdge({
+  a,
+  b,
+  delay,
+}: {
+  a: { x: number; y: number };
+  b: { x: number; y: number };
+  delay: number;
+}) {
   const len = Math.hypot(b.x - a.x, b.y - a.y);
   const d = useSharedValue(1);
   useEffect(() => {
@@ -242,12 +335,28 @@ export function GraphArt() {
 
       {/* intelligence pulses flowing out of the hub */}
       {GNODES.map((n, i) => (
-        <Packet key={`p${i}`} from={HUB} to={n} color={n.c} size={7} delay={1200 + i * 160} duration={1500} />
+        <Packet
+          key={`p${i}`}
+          from={HUB}
+          to={n}
+          color={n.c}
+          size={7}
+          delay={1200 + i * 160}
+          duration={1500}
+        />
       ))}
 
       <PulseRing size={86} color="rgba(124,58,237,0.4)" />
       <View style={{ position: 'absolute', left: HUB.x - 26, top: HUB.y - 26 }}>
-        <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: C.violet, alignItems: 'center', justifyContent: 'center' }}>
+        <View
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: 26,
+            backgroundColor: C.violet,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
           <Ionicons name="git-network" size={26} color="#FFFFFF" />
         </View>
       </View>
@@ -262,18 +371,22 @@ const INDIA =
   'L124 96 L122 118 L116 140 L108 162 L96 190 L88 208 L82 186 L78 160 L72 134 L66 116 ' +
   'L52 104 L40 98 L50 84 L48 66 L58 46 Z';
 
+// Delhi, Mumbai, Kolkata, Hyderabad, Bengaluru
 const HOTSPOTS = [
-  { x: 84, y: 56, c: C.red, delay: 0 }, // Delhi
-  { x: 62, y: 116, c: C.amber, delay: 500 }, // Mumbai
-  { x: 132, y: 86, c: C.red, delay: 900 }, // Kolkata
-  { x: 96, y: 126, c: C.amber, delay: 300 }, // Hyderabad
-  { x: 88, y: 156, c: C.red, delay: 1200 }, // Bengaluru
+  { x: 84, y: 56, c: C.red, delay: 0 },
+  { x: 62, y: 116, c: C.amber, delay: 500 },
+  { x: 132, y: 86, c: C.red, delay: 900 },
+  { x: 96, y: 126, c: C.amber, delay: 300 },
+  { x: 88, y: 156, c: C.red, delay: 1200 },
 ];
 
 function Hotspot({ x, y, c, delay }: { x: number; y: number; c: string; delay: number }) {
   const p = useSharedValue(0);
   useEffect(() => {
-    p.value = withDelay(delay, withRepeat(withTiming(1, { duration: 1900, easing: Easing.out(Easing.quad) }), -1, false));
+    p.value = withDelay(
+      delay,
+      withRepeat(withTiming(1, { duration: 1900, easing: Easing.out(Easing.quad) }), -1, false),
+    );
   }, [p, delay]);
   const ring = useAnimatedProps(() => ({ r: 4 + p.value * 16, opacity: 1 - p.value }));
   return (
@@ -289,12 +402,50 @@ export function MapArt() {
     <View style={canvas(220, 240)}>
       <Float amplitude={5}>
         <Svg width={200} height={230} viewBox="0 0 200 230">
-          <Path d={INDIA} fill={C.tealSoft} stroke={C.teal} strokeWidth={2} strokeLinejoin="round" />
+          <Path
+            d={INDIA}
+            fill={C.tealSoft}
+            stroke={C.teal}
+            strokeWidth={2}
+            strokeLinejoin="round"
+          />
           {/* faint links between hotspots — the crime network */}
-          <Line x1={84} y1={56} x2={62} y2={116} stroke="rgba(239,68,68,0.25)" strokeWidth={1.5} strokeDasharray="3 5" />
-          <Line x1={62} y1={116} x2={96} y2={126} stroke="rgba(239,68,68,0.25)" strokeWidth={1.5} strokeDasharray="3 5" />
-          <Line x1={96} y1={126} x2={132} y2={86} stroke="rgba(239,68,68,0.25)" strokeWidth={1.5} strokeDasharray="3 5" />
-          <Line x1={96} y1={126} x2={88} y2={156} stroke="rgba(239,68,68,0.25)" strokeWidth={1.5} strokeDasharray="3 5" />
+          <Line
+            x1={84}
+            y1={56}
+            x2={62}
+            y2={116}
+            stroke="rgba(239,68,68,0.25)"
+            strokeWidth={1.5}
+            strokeDasharray="3 5"
+          />
+          <Line
+            x1={62}
+            y1={116}
+            x2={96}
+            y2={126}
+            stroke="rgba(239,68,68,0.25)"
+            strokeWidth={1.5}
+            strokeDasharray="3 5"
+          />
+          <Line
+            x1={96}
+            y1={126}
+            x2={132}
+            y2={86}
+            stroke="rgba(239,68,68,0.25)"
+            strokeWidth={1.5}
+            strokeDasharray="3 5"
+          />
+          <Line
+            x1={96}
+            y1={126}
+            x2={88}
+            y2={156}
+            stroke="rgba(239,68,68,0.25)"
+            strokeWidth={1.5}
+            strokeDasharray="3 5"
+          />
           {HOTSPOTS.map((h, i) => (
             <Hotspot key={i} x={h.x} y={h.y} c={h.c} delay={h.delay} />
           ))}
@@ -311,7 +462,11 @@ function Blip({ x, y, c, delay }: { x: number; y: number; c: string; delay: numb
   useEffect(() => {
     p.value = withDelay(
       delay,
-      withRepeat(withSequence(withTiming(1, { duration: 500 }), withTiming(0, { duration: 1400 })), -1, false),
+      withRepeat(
+        withSequence(withTiming(1, { duration: 500 }), withTiming(0, { duration: 1400 })),
+        -1,
+        false,
+      ),
     );
   }, [p, delay]);
   const props = useAnimatedProps(() => ({ r: 3 + p.value * 3, opacity: p.value }));
@@ -328,9 +483,30 @@ export function RadarArt() {
   return (
     <View style={canvas(240, 240)}>
       <Svg width={240} height={240} style={{ position: 'absolute' }}>
-        <Circle cx={120} cy={120} r={100} stroke="rgba(79,70,229,0.18)" strokeWidth={1.5} fill="none" />
-        <Circle cx={120} cy={120} r={68} stroke="rgba(79,70,229,0.22)" strokeWidth={1.5} fill="none" />
-        <Circle cx={120} cy={120} r={36} stroke="rgba(79,70,229,0.28)" strokeWidth={1.5} fill="none" />
+        <Circle
+          cx={120}
+          cy={120}
+          r={100}
+          stroke="rgba(79,70,229,0.18)"
+          strokeWidth={1.5}
+          fill="none"
+        />
+        <Circle
+          cx={120}
+          cy={120}
+          r={68}
+          stroke="rgba(79,70,229,0.22)"
+          strokeWidth={1.5}
+          fill="none"
+        />
+        <Circle
+          cx={120}
+          cy={120}
+          r={36}
+          stroke="rgba(79,70,229,0.28)"
+          strokeWidth={1.5}
+          fill="none"
+        />
         <Line x1={20} y1={120} x2={220} y2={120} stroke="rgba(79,70,229,0.15)" strokeWidth={1} />
         <Line x1={120} y1={20} x2={120} y2={220} stroke="rgba(79,70,229,0.15)" strokeWidth={1} />
         <Blip x={166} y={84} c={C.amber} delay={200} />
@@ -353,7 +529,15 @@ export function RadarArt() {
         </Svg>
       </Animated.View>
 
-      <View style={{ position: 'absolute', width: 16, height: 16, borderRadius: 8, backgroundColor: C.indigo }} />
+      <View
+        style={{
+          position: 'absolute',
+          width: 16,
+          height: 16,
+          borderRadius: 8,
+          backgroundColor: C.indigo,
+        }}
+      />
     </View>
   );
 }

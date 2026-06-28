@@ -50,7 +50,8 @@ const SLIDES: Slide[] = [
     tint: '#EEF1FF',
     eyebrow: 'Call protection',
     title: 'Scams stopped mid-call',
-    subtitle: 'Our agent joins the line, spots fraud passing between you and the scammer, and steps in instantly.',
+    subtitle:
+      'Our agent joins the line, spots fraud passing between you and the scammer, and steps in instantly.',
   },
   {
     key: 'chat',
@@ -59,7 +60,8 @@ const SLIDES: Slide[] = [
     tint: '#F3EEFF',
     eyebrow: 'Chat risk checks',
     title: 'Ask before you trust',
-    subtitle: 'Describe anything suspicious — a message, link, or caller — and our graph intelligence traces the connections to score the risk.',
+    subtitle:
+      'Describe anything suspicious — a message, link, or caller — and our graph intelligence traces the connections to score the risk.',
   },
   {
     key: 'geo',
@@ -68,7 +70,8 @@ const SLIDES: Slide[] = [
     tint: '#E7FBF6',
     eyebrow: 'Geospatial intelligence',
     title: 'See where fraud lives',
-    subtitle: 'Live cybercrime hotspots mapped across India, so you know which numbers and regions to watch.',
+    subtitle:
+      'Live cybercrime hotspots mapped across India, so you know which numbers and regions to watch.',
   },
   {
     key: 'evolve',
@@ -77,7 +80,8 @@ const SLIDES: Slide[] = [
     tint: '#FFF6E6',
     eyebrow: 'Always learning',
     title: 'Ahead of new scams',
-    subtitle: 'The system constantly studies the latest fraud patterns, so your protection evolves as fast as the scammers do.',
+    subtitle:
+      'The system constantly studies the latest fraud patterns, so your protection evolves as fast as the scammers do.',
   },
 ];
 
@@ -147,10 +151,15 @@ export default function Onboarding() {
         onScroll={onScroll}
         scrollEventThrottle={16}
         onMomentumScrollEnd={onMomentumEnd}
-        renderItem={({ item }) => <SlideView item={item} width={width} height={height} topInset={insets.top} />}
+        renderItem={({ item }) => (
+          <SlideView item={item} width={width} height={height} topInset={insets.top} />
+        )}
       />
 
-      <Pressable onPress={finish} hitSlop={8} style={{ position: 'absolute', top: insets.top + 6, right: 18, padding: 8 }}>
+      <Pressable
+        onPress={finish}
+        hitSlop={8}
+        style={{ position: 'absolute', top: insets.top + 6, right: 18, padding: 8 }}>
         <AppText variant="bodyStrong" color={colors.muted}>
           Skip
         </AppText>
@@ -158,13 +167,19 @@ export default function Onboarding() {
 
       {/* Bottom controls with a soft mask so copy never collides with them */}
       <View style={[styles.controls, { paddingBottom: insets.bottom + 22 }]}>
-        <LinearGradient colors={['rgba(247,248,252,0)', PAGE_BG]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+        <LinearGradient
+          colors={['rgba(247,248,252,0)', PAGE_BG]}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
         <View style={styles.dots}>
           {SLIDES.map((_, i) => (
             <Dot key={i} i={i} scrollX={scrollX} width={width} accent={active.accent} />
           ))}
         </View>
-        <Pressable onPress={() => (isLast ? finish() : goTo(index + 1))} style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}>
+        <Pressable
+          onPress={() => (isLast ? finish() : goTo(index + 1))}
+          style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}>
           <LinearGradient
             colors={[active.accent, '#7C3AED']}
             start={{ x: 0, y: 0 }}
@@ -187,7 +202,17 @@ export default function Onboarding() {
   );
 }
 
-function SlideView({ item, width, height, topInset }: { item: Slide; width: number; height: number; topInset: number }) {
+function SlideView({
+  item,
+  width,
+  height,
+  topInset,
+}: {
+  item: Slide;
+  width: number;
+  height: number;
+  topInset: number;
+}) {
   const { Art } = item;
   const heroH = height * 0.56;
   return (
@@ -218,7 +243,17 @@ function SlideView({ item, width, height, topInset }: { item: Slide; width: numb
   );
 }
 
-function Dot({ i, scrollX, width, accent }: { i: number; scrollX: SharedValue<number>; width: number; accent: string }) {
+function Dot({
+  i,
+  scrollX,
+  width,
+  accent,
+}: {
+  i: number;
+  scrollX: SharedValue<number>;
+  width: number;
+  accent: string;
+}) {
   const style = useAnimatedStyle(() => {
     const input = [(i - 1) * width, i * width, (i + 1) * width];
     return {
@@ -230,8 +265,23 @@ function Dot({ i, scrollX, width, accent }: { i: number; scrollX: SharedValue<nu
 }
 
 const styles = StyleSheet.create({
-  controls: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 20, paddingHorizontal: 24, gap: 20 },
+  controls: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingTop: 20,
+    paddingHorizontal: 24,
+    gap: 20,
+  },
   dots: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   dot: { height: 7, borderRadius: 4, marginHorizontal: 3 },
-  cta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: 16 },
+  cta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 16,
+  },
 });

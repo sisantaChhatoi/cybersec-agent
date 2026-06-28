@@ -16,9 +16,24 @@ const STATS = [
 ];
 
 const ACTIVITY = [
-  { icon: 'shield-outline' as const, tone: 'danger' as const, title: 'Blocked a bank-fraud call', time: '2m ago' },
-  { icon: 'checkmark-circle-outline' as const, tone: 'success' as const, title: 'Marked +91 90123… safe', time: '1h ago' },
-  { icon: 'alert-circle-outline' as const, tone: 'neutral' as const, title: 'Suspicious lottery SMS', time: '3h ago' },
+  {
+    icon: 'shield-outline' as const,
+    tone: 'danger' as const,
+    title: 'Blocked a bank-fraud call',
+    time: '2m ago',
+  },
+  {
+    icon: 'checkmark-circle-outline' as const,
+    tone: 'success' as const,
+    title: 'Marked +91 90123… safe',
+    time: '1h ago',
+  },
+  {
+    icon: 'alert-circle-outline' as const,
+    tone: 'neutral' as const,
+    title: 'Suspicious lottery SMS',
+    time: '3h ago',
+  },
 ];
 
 export default function ProtectionScreen() {
@@ -68,7 +83,13 @@ function StatusHero() {
   );
 }
 
-function HeroMeta({ icon, text }: { icon: React.ComponentProps<typeof Ionicons>['name']; text: string }) {
+function HeroMeta({
+  icon,
+  text,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  text: string;
+}) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
       <Ionicons name={icon} size={14} color="rgba(255,255,255,0.85)" />

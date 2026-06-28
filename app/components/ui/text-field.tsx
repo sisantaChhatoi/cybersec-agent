@@ -15,7 +15,15 @@ type Props = TextInputProps & {
   accent?: string;
 };
 
-export function TextField({ label, icon, error, optional, accent = colors.brand, style, ...input }: Props) {
+export function TextField({
+  label,
+  icon,
+  error,
+  optional,
+  accent = colors.brand,
+  style,
+  ...input
+}: Props) {
   const [focused, setFocused] = useState(false);
   const borderColor = error ? colors.danger : focused ? accent : colors.border;
 
@@ -44,9 +52,7 @@ export function TextField({ label, icon, error, optional, accent = colors.brand,
           paddingHorizontal: space.lg,
           height: 52,
         }}>
-        {icon ? (
-          <Ionicons name={icon} size={18} color={focused ? accent : colors.faint} />
-        ) : null}
+        {icon ? <Ionicons name={icon} size={18} color={focused ? accent : colors.faint} /> : null}
         <TextInput
           {...input}
           onFocus={(e) => {

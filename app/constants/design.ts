@@ -8,19 +8,22 @@ export const colors = {
   // Brand — indigo. Used for primary actions, key icons, links.
   brand: '#4F46E5',
   brandDark: '#4338CA',
-  brandTint: '#EEF2FF', // soft fill behind brand icons
+  // soft fill behind brand icons
+  brandTint: '#EEF2FF',
   brandBorder: '#E0E7FF',
 
   // Ink scale — used for (almost) all text. Neutral, not tinted.
-  ink: '#111827', // headings
-  body: '#374151', // body copy
-  muted: '#6B7280', // secondary / captions
-  faint: '#9CA3AF', // disabled / placeholder
+  // headings / body / secondary / placeholder
+  ink: '#111827',
+  body: '#374151',
+  muted: '#6B7280',
+  faint: '#9CA3AF',
 
   // Surfaces
   bg: '#F6F7FB',
   surface: '#FFFFFF',
-  surfaceAlt: '#F3F4F8', // neutral icon-badge fill
+  // neutral icon-badge fill
+  surfaceAlt: '#F3F4F8',
   border: '#ECEDF3',
   borderStrong: '#E2E4ED',
 
@@ -56,8 +59,20 @@ export const radius = {
 
 // Type scale. weight values are RN-accepted strings.
 export const typography = {
-  display: { fontSize: 30, fontWeight: '800', lineHeight: 36, letterSpacing: -0.5, color: colors.ink },
-  title: { fontSize: 24, fontWeight: '800', lineHeight: 30, letterSpacing: -0.3, color: colors.ink },
+  display: {
+    fontSize: 30,
+    fontWeight: '800',
+    lineHeight: 36,
+    letterSpacing: -0.5,
+    color: colors.ink,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '800',
+    lineHeight: 30,
+    letterSpacing: -0.3,
+    color: colors.ink,
+  },
   heading: { fontSize: 18, fontWeight: '700', lineHeight: 24, color: colors.ink },
   subtitle: { fontSize: 16, fontWeight: '600', lineHeight: 22, color: colors.ink },
   body: { fontSize: 15, fontWeight: '400', lineHeight: 22, color: colors.body },
