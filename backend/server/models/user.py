@@ -11,6 +11,7 @@ class Languages(BaseModel):
 
 
 class UserCreate(BaseModel):
+    name: str = Field(min_length=1)
     phone_no: str
     password: str = Field(min_length=6)
     state: str
@@ -27,6 +28,7 @@ class LoginRequest(BaseModel):
 
 class UserPublic(BaseModel):
     user_id: str
+    name: str
     phone_no: str
     state: str
     city: str

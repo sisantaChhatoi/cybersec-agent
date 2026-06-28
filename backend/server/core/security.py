@@ -1,5 +1,6 @@
 import hashlib
 import secrets
+from datetime import datetime, timedelta, timezone
 
 import jwt
 
@@ -25,8 +26,11 @@ def verify_password(password: str, stored: str) -> bool:
 
 
 def create_access_token(user_id: str) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expiry_minutes)
     return jwt.encode(
-        {"sub": user_id}, settings.jwt_secret, algorithm=settings.jwt_algorithm
+        {"sub": user_id, "exp": expire},
+        settings.jwt_secret,
+        algorithm=settings.jwt_algorithm,
     )
 
 
