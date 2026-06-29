@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     chat_temperature: float = 0.3
     chat_history_limit: int = 6
     groq_chat_model: str = "llama-3.3-70b-versatile"
-    sarvam_chat_model: str = "sarvam-m"
+    sarvam_chat_model: str = "sarvam-30b"
     sarvam_base_url: str = "https://api.sarvam.ai/v1"
 
     embedding_model: str = "paraphrase-multilingual-MiniLM-L12-v2"

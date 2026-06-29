@@ -1,44 +1,91 @@
 from collections.abc import AsyncIterator
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
-from langchain_groq import ChatGroq
+from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import (
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
+from langchain_core.tools import BaseTool
 
+from server.chatbot.llm import make_chat_llm
 from server.models.chat import Message
 
 _SYSTEM_PROMPT = (
-    "You are a helpful assistant for a scam-call awareness app. "
-    "Answer the user's questions clearly and concisely."
+    "You are a calm, non-alarmist fraud-safety assistant for an Indian scam-protection "
+    "app. Someone messages you about a suspicious call or message.\n\n"
+    "1. CAPTURE FIRST (mandatory): if the user's message contains ANY scam detail — a phone "
+    "number, bank account, UPI id, amount, their city, who the caller claimed to be, or the "
+    "kind of scam — you MUST call save_incident with those fields before replying, and again "
+    "whenever new details appear. This is not optional.\n"
+    "2. GROUND your advice with the search_fraud_knowledge tool. Never invent helpline numbers "
+    "or reporting steps.\n"
+    "3. Reply in the user's own language and script (Hindi, Hinglish, or English) — mirror how "
+    "they wrote. Be brief and clear; don't dump a long checklist every turn.\n"
+    "4. To fill gaps, ask for the key missing details (the number that called, the account/UPI "
+    "they were told to pay, their city) together in ONE natural question. Settle with what you "
+    "get within 2-3 clarifications — never re-ask the same field.\n"
+    "5. Never ask the user for an OTP, PIN, password, or card number yourself. Reassure them "
+    "that hanging up and reporting (1930 / cybercrime.gov.in) is the right move."
 )
+
+_MAX_TOOL_ROUNDS = 5
 
 
 def to_lc_messages(messages: list[Message]) -> list[BaseMessage]:
-    out: list[BaseMessage] = []
-    for m in messages:
-        out.append(
-            HumanMessage(m.message) if m.role == "user" else AIMessage(m.message)
-        )
-    return out
+    return [
+        HumanMessage(m.message) if m.role == "user" else AIMessage(m.message)
+        for m in messages
+    ]
 
 
 class ChatbotEngine:
-    def __init__(self, model: str, temperature: float = 0.3) -> None:
-        self._model = model
-        self._temperature = temperature
-        self._llm: ChatGroq | None = None
+    def __init__(self) -> None:
+        self._llm: BaseChatModel | None = None
 
     @property
-    def llm(self) -> ChatGroq:
-        llm = self._llm
-        if llm is None:
-            llm = ChatGroq(model=self._model, temperature=self._temperature)
-            self._llm = llm
-        return llm
+    def llm(self) -> BaseChatModel:
+        if self._llm is None:
+            self._llm = make_chat_llm()
+        return self._llm
 
     async def stream_reply(
-        self, history: list[BaseMessage], user_message: str
+        self,
+        history: list[BaseMessage],
+        user_message: str,
+        tools: list[BaseTool],
     ) -> AsyncIterator[str]:
-        # TODO: bind tools here once tool-calling is designed (self.llm.bind_tools([...])).
-        messages = [SystemMessage(_SYSTEM_PROMPT), *history, HumanMessage(user_message)]
-        async for chunk in self.llm.astream(messages):
-            if isinstance(chunk.content, str) and chunk.content:
-                yield chunk.content
+        llm = self.llm.bind_tools(tools)
+        by_name = {t.name: t for t in tools}
+        messages: list[BaseMessage] = [
+            SystemMessage(_SYSTEM_PROMPT),
+            *history,
+            HumanMessage(user_message),
+        ]
+
+        for _ in range(_MAX_TOOL_ROUNDS):
+            gathered: AIMessageChunk | None = None
+            async for chunk in llm.astream(messages):
+                if isinstance(chunk.content, str) and chunk.content:
+                    yield chunk.content
+                gathered = chunk if gathered is None else gathered + chunk
+
+            if gathered is None:
+                return
+            messages.append(gathered)
+            if not gathered.tool_calls:
+                return
+
+            for call in gathered.tool_calls:
+                tool = by_name.get(call["name"])
+                result = (
+                    await tool.ainvoke(call["args"])
+                    if tool is not None
+                    else f"unknown tool: {call['name']}"
+                )
+                messages.append(
+                    ToolMessage(content=str(result), tool_call_id=call["id"])
+                )

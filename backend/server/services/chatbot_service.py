@@ -2,6 +2,7 @@ from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 
 from server.chatbot.engine import ChatbotEngine, to_lc_messages
+from server.chatbot.tools import build_chat_tools
 from server.models.chat import (
     DEFAULT_TITLE,
     Chat,
@@ -10,6 +11,7 @@ from server.models.chat import (
     new_chat_id,
 )
 from server.repositories.chat_repo import ChatRepository
+from server.repositories.incident_repo import IncidentRepository
 
 
 class ChatNotFoundError(Exception):
@@ -26,9 +28,14 @@ def _title_from(text: str) -> str:
 
 class ChatbotService:
     def __init__(
-        self, chats: ChatRepository, engine: ChatbotEngine, history_limit: int
+        self,
+        chats: ChatRepository,
+        incidents: IncidentRepository,
+        engine: ChatbotEngine,
+        history_limit: int,
     ) -> None:
         self._chats = chats
+        self._incidents = incidents
         self._engine = engine
         self._history_limit = history_limit
 
@@ -53,7 +60,9 @@ class ChatbotService:
         if meta is None or meta.user_id != user_id:
             raise ChatNotFoundError
 
-    async def reply_stream(self, chat_id: str, text: str) -> AsyncIterator[str]:
+    async def reply_stream(
+        self, chat_id: str, user_id: str, text: str
+    ) -> AsyncIterator[str]:
         history_msgs = await self._chats.recent_messages(chat_id, self._history_limit)
         if not history_msgs:
             meta = await self._chats.get_meta(chat_id)
@@ -65,8 +74,9 @@ class ChatbotService:
         )
 
         history = to_lc_messages(history_msgs)
+        tools = build_chat_tools(self._incidents, session_id=chat_id, user_id=user_id)
         parts: list[str] = []
-        async for token in self._engine.stream_reply(history, text):
+        async for token in self._engine.stream_reply(history, text, tools):
             parts.append(token)
             yield token
 
