@@ -20,6 +20,14 @@ from pydantic import BaseModel, Field
 # number before falling back to accepting just the bank name.
 _ACCOUNT_NUMBER_PATTERN = re.compile(r"\d{6,}")
 
+# A phone number, a bank account number, and a UPI handle are different
+# identifier types -- they should never legitimately hold the exact same
+# value. If extraction returns the same value for two of these (typically
+# because the model conflated two questions into one and the user's single
+# answer got misattributed to both), that's a misattribution to guard
+# against, not a real coincidence worth recording twice.
+_DISTINCT_IDENTITY_FIELDS = ("caller_number", "mule_account", "mule_upi")
+
 
 class ScamType(str, Enum):
     DIGITAL_ARREST = "digital_arrest"
@@ -126,9 +134,40 @@ class Incident(BaseModel):
                     continue
                 setattr(self, field, value)
             elif field == "mule_account":
-                self._merge_mule_account(str(value))
+                if not self._resolve_identity_conflict("mule_account", str(value)):
+                    self._merge_mule_account(str(value))
+            elif field in _DISTINCT_IDENTITY_FIELDS:
+                if getattr(self, field) is None and not self._resolve_identity_conflict(field, str(value)):
+                    setattr(self, field, value)
             elif getattr(self, field) is None:
                 setattr(self, field, value)
+
+    def _resolve_identity_conflict(self, field: str, value: str) -> bool:
+        """A phone number, a bank account, and a UPI handle should never
+        legitimately be the exact same string -- if extraction returns a
+        value that's already claimed by ANOTHER identity field, that's a
+        misattribution (e.g. the bot conflated two questions into one reply
+        and the user's single answer got attributed to both). mule_account
+        and mule_upi -- the fields the fraud graph actually links rings
+        through -- take priority over caller_number in that tie: the
+        conversation pattern behind this bug is almost always "asked for
+        the caller's number AND the account number in one breath," and the
+        user's answer is far more often the account they were explicitly
+        asked to name than a coincidentally-identical caller ID.
+
+        Returns True if `field` should be suppressed (left unset)."""
+        value = value.strip()
+        priority = {"mule_account": 0, "mule_upi": 0, "caller_number": 1}
+        for other in _DISTINCT_IDENTITY_FIELDS:
+            if other == field:
+                continue
+            existing = getattr(self, other)
+            if existing is None or str(existing).strip() != value:
+                continue
+            if priority[other] < priority[field]:
+                return True  # other field has priority -- suppress this one
+            setattr(self, other, None)  # this field has priority -- clear the bogus duplicate
+        return False
 
     def _merge_mule_account(self, value: str) -> None:
         if _ACCOUNT_NUMBER_PATTERN.search(value):
