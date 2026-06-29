@@ -90,6 +90,21 @@ class Incident(BaseModel):
             elif getattr(self, field) is None:
                 setattr(self, field, value)
 
+    def overwrite(self, updates: dict) -> None:
+        """Set the given fields outright, bypassing the fill-once lock. For
+        deliberate user corrections only ("the account was X, not Y")."""
+        for field in EXTRACTABLE_FIELDS:
+            value = updates.get(field)
+            if not _is_real_value(value):
+                continue
+            if field == "scam_type":
+                try:
+                    self.scam_type = ScamType(value)
+                except ValueError:
+                    continue
+            else:
+                setattr(self, field, value)
+
     def _resolve_identity_conflict(self, field: str, value: str) -> bool:
         """If `value` is already held by another identity field, it's a
         misattribution. mule_account/mule_upi (what the fraud graph links rings

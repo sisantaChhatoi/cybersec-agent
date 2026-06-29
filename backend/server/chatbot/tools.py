@@ -84,4 +84,51 @@ def build_chat_tools(
         missing = [f for f in _REPORT_FIELDS if getattr(incident, f) is None]
         return f"saved; still missing: {', '.join(missing) or 'nothing key'}"
 
-    return [search_fraud_knowledge, save_incident]
+    @tool
+    async def update_incident(
+        scam_type: Literal[
+            "digital_arrest",
+            "courier_parcel",
+            "kyc",
+            "upi",
+            "job",
+            "investment",
+            "lottery",
+            "other",
+        ]
+        | None = None,
+        caller_number: str | None = None,
+        mule_account: str | None = None,
+        mule_upi: str | None = None,
+        victim_region: str | None = None,
+        claimed_authority: str | None = None,
+        amount_demanded: float | None = None,
+        amount_lost: float | None = None,
+        payment_method: str | None = None,
+        remote_app_requested: str | None = None,
+    ) -> str:
+        """Correct a detail already recorded, when the user explicitly changes
+        it ("the account was actually X, not Y"). Use ONLY for such corrections,
+        not for adding new details — use save_incident for new details. Pass
+        only the field(s) being corrected."""
+        incident = await incidents.get(session_id)
+        if incident is None:
+            return "nothing recorded yet; use save_incident"
+        incident.overwrite(
+            {
+                "scam_type": scam_type,
+                "caller_number": caller_number,
+                "mule_account": mule_account,
+                "mule_upi": mule_upi,
+                "victim_region": victim_region,
+                "claimed_authority": claimed_authority,
+                "amount_demanded": amount_demanded,
+                "amount_lost": amount_lost,
+                "payment_method": payment_method,
+                "remote_app_requested": remote_app_requested,
+            }
+        )
+        await incidents.upsert(incident)
+        return "updated"
+
+    return [search_fraud_knowledge, save_incident, update_incident]
