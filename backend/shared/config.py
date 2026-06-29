@@ -16,8 +16,16 @@ class Settings(BaseSettings):
     jwt_secret: str = "dev-secret-change-me"
     jwt_algorithm: str = "HS256"
     jwt_expiry_minutes: int = 60 * 24 * 7
-    groq_chat_model: str = "llama-3.3-70b-versatile"
+    chat_provider: str = "sarvam"
+    chat_temperature: float = 0.3
     chat_history_limit: int = 6
+    groq_chat_model: str = "llama-3.3-70b-versatile"
+    sarvam_chat_model: str = "sarvam-m"
+    sarvam_base_url: str = "https://api.sarvam.ai/v1"
+
+    embedding_model: str = "paraphrase-multilingual-MiniLM-L12-v2"
+    retrieval_top_k: int = 4
+    retrieval_min_score: float = 0.35
 
     groq_api_key: str = ""
     sarvam_api_key: str = ""
@@ -26,6 +34,9 @@ class Settings(BaseSettings):
     stt_language_code: str = "unknown"
     stt_model: str = "saaras:v3"
     stt_sample_rate: int = 16000
+
+    expo_push_url: str = "https://exp.host/--/api/v2/push/send"
+    test_notification_phone: str = "+917992463077"
 
     detector_model: str = "llama-3.3-70b-versatile"
     detector_threshold: float = 0.6
