@@ -8,6 +8,7 @@ dependencies = [
     "beautifulsoup4>=4.15.0",
     "faiss-cpu>=1.14.3",
     "fastapi[standard]>=0.138.0",
+    "geopy>=2.4",
     "groq<1",
     "httpx>=0.28.1",
     "langchain-community>=0.4.2",
