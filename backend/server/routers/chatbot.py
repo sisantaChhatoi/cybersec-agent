@@ -42,7 +42,7 @@ async def send_message(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "chat not found") from exc
 
     async def events():
-        async for token in service.reply_stream(chat_id, body.message):
+        async for token in service.reply_stream(chat_id, user.user_id, body.message):
             yield {"data": token}
         yield {"event": "done", "data": "[DONE]"}
 
