@@ -53,10 +53,14 @@ Mongo via `shared/db.py` (`AsyncMongoClient`); all settings in `shared/config.py
   Hindi/Hinglish, settle in 2–3 clarifications, never ask for OTP/PIN.
 
 ### Fraud-intelligence graph (the strong part)
-- **Offline batch job:** `python -m server.graph` reads incidents from Mongo →
-  NetworkX co-occurrence graph → Louvain fraud rings → per-entity risk scoring →
-  geocoded geospatial hotspots + NCRB-weighted deployment ranking → writes
-  snapshot docs to the `intelligence` collection; best-effort Neo4j load.
+- **Scheduled rebuild:** `server/graph/scheduler.py` runs `pipeline.run()` on
+  an `AsyncIOScheduler` interval (default 6h, configurable via
+  `GRAPH_REBUILD_INTERVAL_HOURS`). Starts automatically with the FastAPI app.
+  For a one-off/first-time seed: `python -m server.graph`. The job reads
+  incidents from Mongo → NetworkX co-occurrence graph → Louvain fraud rings →
+  per-entity risk scoring → geocoded geospatial hotspots + NCRB-weighted
+  deployment ranking → writes snapshot docs to the `intelligence` collection;
+  best-effort Neo4j load.
 - **Read API (app dashboard):** `GET /intelligence/rings`, `/hotspots`
   (+ deployment strategy), `/high-risk-accounts`. Read-only, served straight
   from the precomputed snapshots.
@@ -69,8 +73,9 @@ Mongo via `shared/db.py` (`AsyncMongoClient`); all settings in `shared/config.py
 - **`sarvam-m` is DEPRECATED** → use `sarvam-30b` / `sarvam-105b`
   (`sarvam_chat_model`). It 400s otherwise.
 - **`/intelligence` only ever reads precomputed snapshots.** Never run the graph
-  build in the request path. If the endpoints return empty, the batch job hasn't
-  run — run `python -m server.graph` once incidents exist.
+  build in the request path. In prod the scheduler handles rebuilds automatically.
+  If the endpoints return empty on first boot, seed once with `python -m server.graph`
+  (the scheduler only fires after the first interval has elapsed).
 - **Neo4j is optional for the batch.** The load is best-effort; the job logs
   `neo4j_error` and finishes fine if the container is down.
 - **Geocoding** uses Nominatim with a committed cache at
@@ -227,6 +232,7 @@ LIVEKIT_API_SECRET=
 SARVAM_API_KEY=                      # **Sarvam** streaming STT (Saaras) — from Sarvam dashboard
 GROQ_API_KEY=
 MONGODB_URI=mongodb://mongo:27017   # docker-compose service name; localhost:27017 for local dev
+GRAPH_REBUILD_INTERVAL_HOURS=6     # how often the scheduler rebuilds the intelligence snapshots (default 6)
 # Twilio creds not needed for the dial-in demo (Twilio → webhook, static TwiML, SIP via console).
 # Add TWILIO_AUTH_TOKEN only for webhook signature validation or Twilio REST API calls.
 # Expo push needs no server-side key when using Expo's push service.
