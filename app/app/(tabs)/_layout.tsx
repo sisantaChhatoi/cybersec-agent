@@ -1,10 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 
 import { colors } from '@/constants/design';
+import { api } from '@/lib/api';
+import { registerForPushToken } from '@/lib/notifications';
 
 export default function TabLayout() {
+  useEffect(() => {
+    registerForPushToken()
+      .then((token) => (token ? api.registerPushToken(token) : null))
+      .catch(() => null);
+  }, []);
+
   return (
     <Tabs
       screenOptions={{

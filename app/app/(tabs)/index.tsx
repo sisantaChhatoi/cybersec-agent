@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { View } from 'react-native';
+import { useState } from 'react';
+import { Alert, View } from 'react-native';
 
 import { APP_NAME } from '@/constants/app';
 import { AppText } from '@/components/ui/app-text';
@@ -11,6 +12,7 @@ import { IconBadge } from '@/components/ui/icon-badge';
 import { Screen } from '@/components/ui/screen';
 import { SectionHeader } from '@/components/ui/section-header';
 import { colors, radius, space } from '@/constants/design';
+import { api, ApiError } from '@/lib/api';
 
 const CAPABILITIES = [
   {
@@ -70,8 +72,43 @@ export default function LandingScreen() {
       <Hero />
       <Capabilities />
       <HowItWorks />
+      <TestNotify />
       <Footer />
     </Screen>
+  );
+}
+
+function TestNotify() {
+  const [sending, setSending] = useState(false);
+
+  const onPress = async () => {
+    setSending(true);
+    try {
+      const res = await api.testNotify();
+      Alert.alert('Notification sent', `A test alert was pushed for ${res.test_target}.`);
+    } catch (e) {
+      Alert.alert('Could not send', e instanceof ApiError ? e.message : 'Something went wrong.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Card>
+      <View style={{ gap: space.md, alignItems: 'flex-start' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+          <IconBadge name="notifications-outline" tone="brand" size="sm" />
+          <AppText variant="subtitle">Test notification</AppText>
+        </View>
+        <AppText variant="caption">Sends a sample scam alert to this device.</AppText>
+        <Button
+          label={sending ? 'Sending…' : 'Send test notification'}
+          icon="notifications-outline"
+          onPress={onPress}
+          full
+        />
+      </View>
+    </Card>
   );
 }
 

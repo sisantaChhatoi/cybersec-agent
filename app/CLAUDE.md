@@ -33,6 +33,7 @@ Base URL is `API_URL` in `constants/config.ts`; the typed client is `lib/api.ts`
   `/high-risk-accounts` → precomputed JSON for a fraud-map / dashboard screen.
 
 ### State / gotchas
+
 - `lib/notifications.ts` registers the Expo push token (`POST /auth/push-token`).
   **Expo Go (SDK 53+) removed Android remote push** → a real token needs a **dev
   build / EAS APK**, not Expo Go. "No push token registered" downstream is this.
@@ -40,7 +41,9 @@ Base URL is `API_URL` in `constants/config.ts`; the typed client is `lib/api.ts`
   ("12 calls screened" …) — placeholder, not real data.
 - Tabs are `index` (home, has the Test-Notify button) and `protection`. **No chat
   or intelligence screen exists yet.**
-- The notification wiring on the backend side is **partially uncommitted**.
+- Push notifications: the code path is wired end-to-end, but needs Firebase/EAS
+  setup + a dev build + the detector→push path before it delivers for real. Full
+  handoff: `backend/docs/notifications-handoff.md`.
 
 ## Stack
 

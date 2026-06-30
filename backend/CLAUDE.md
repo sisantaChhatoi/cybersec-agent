@@ -92,8 +92,10 @@ Mongo via `shared/db.py` (`AsyncMongoClient`); all settings in `shared/config.py
   for `ChatOpenAI(api_key=...)`.
 - **Incident identity guard:** `caller_number` / `mule_account` / `mule_upi`
   must never share a value; a real account number (`\d{6,}`) overwrites.
-- **Notification feature is partially uncommitted** (`services/notification_service.py`,
-  `routers/test.py`, `/auth/push-token`) — see `app/CLAUDE.md`.
+- **Push notifications:** code path is complete and wired (token register → store →
+  Expo send via `POST /test/notify`), but **not production-ready** — the Expo→FCM
+  credential chain + EAS build and the detector→push send path are still pending.
+  Full status/handoff: `backend/docs/notifications-handoff.md`.
 
 ## Core principles (do not violate)
 

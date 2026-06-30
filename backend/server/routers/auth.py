@@ -2,14 +2,16 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from server.deps import get_auth_service, get_current_user
+from server.deps import get_auth_service, get_current_user, get_user_repository
 from server.models.user import (
     AuthResponse,
     LoginRequest,
+    PushTokenRequest,
     UserCreate,
     UserInDB,
     UserPublic,
 )
+from server.repositories.user_repo import UserRepository
 from server.services.auth_service import (
     AuthService,
     InvalidCredentialsError,
@@ -52,3 +54,12 @@ async def me(
     current_user: Annotated[UserInDB, Depends(get_current_user)],
 ) -> UserInDB:
     return current_user
+
+
+@router.post("/push-token", status_code=status.HTTP_204_NO_CONTENT)
+async def register_push_token(
+    data: PushTokenRequest,
+    current_user: Annotated[UserInDB, Depends(get_current_user)],
+    users: Annotated[UserRepository, Depends(get_user_repository)],
+) -> None:
+    await users.set_push_token(current_user.user_id, data.push_token)
