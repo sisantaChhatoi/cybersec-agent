@@ -1,11 +1,7 @@
-"""Periodic fraud-graph rebuild scheduler.
+"""Periodic fraud-graph rebuild via APScheduler.
 
-Wraps pipeline.run() in an APScheduler interval job so the intelligence
-snapshots stay current automatically. The rebuild interval is controlled by
-GRAPH_REBUILD_INTERVAL_HOURS in the environment (default 6).
-
-pipeline.run() is synchronous (uses a sync MongoClient), so it runs in a
-thread-pool executor — never blocks the async event loop.
+pipeline.run() is synchronous, so it's offloaded to a thread-pool executor
+to keep the rebuild off the async event loop.
 """
 
 from __future__ import annotations
