@@ -2,13 +2,9 @@
 
 Context file for Claude Code. Place at `backend/CLAUDE.md`.
 
-## Code style
-
-- Clean, PEP 8 / PEP 20 code. Type-annotate signatures.
-- **Minimal comments.** No verbose open-source-style docstrings or narration.
-  Comment only non-obvious *why*, not *what*. Let names carry intent.
-- Formatting/linting via `ruff` (`ruff-format` + `ruff-check`), enforced by a
-  pre-commit hook (`.pre-commit-config.yaml` at repo root). Run `pre-commit install` once.
+> Repo-wide conventions — code style, minimal comments, pre-commit setup, SOLID,
+> "ask, don't assume" — live in the **root `CLAUDE.md`**. Read that first; this
+> file is backend-specific.
 
 ## What this is
 
@@ -94,35 +90,61 @@ Mongo via `shared/db.py` (`AsyncMongoClient`); all settings in `shared/config.py
 - **Notification feature is partially uncommitted** (`services/notification_service.py`,
   `routers/test.py`, `/auth/push-token`) — see `app/CLAUDE.md`.
 
-## Core principle (do not violate)
+## Core principles (do not violate)
 
-The agent only ever listens to a call it has been **added to as a participant**
-(merge or dial-in conference). It is never a covert tap. Any design that captures
-call audio without the participants' awareness is out of scope and not to be built.
-For production, assume a recorded-line disclosure is required.
+1. **No covert listening.** The call agent only ever listens to a call it has
+   been **added to as a participant** (merge or dial-in conference) — never a
+   covert tap. No design that captures call audio without the participants'
+   awareness. For production, assume a recorded-line disclosure is required.
+2. **Never solicit secrets, never act for the user.** The chat assistant must
+   never ask for an OTP, PIN, password, or card number, and never performs a
+   transaction or any action on the user's behalf — it only advises and points
+   to reporting (1930 / cybercrime.gov.in).
+3. **Intelligence is advisory, not a verdict.** Fraud rings, risk levels, and
+   hotspots are **heuristics for prioritization, not verified determinations** of
+   guilt. Never present them as accusations or proof — label them as signals.
+   The deployment methodology already carries this disclaimer; keep it.
+4. **Match the scammer's identifiers; protect the victim's identity.** The mule
+   account / UPI / caller number are the *attacker's* fingerprints — matching and
+   showing them across incidents is the whole product (`lookup_fraud_network`,
+   `/intelligence`), and that is intended. What must never leak is the **person
+   who reported an incident**: never expose `user_id` or tie a scammer identifier
+   back to who reported it. Cross-incident results stay aggregate (counts, scam
+   types, linked *scammer* entities — never reporters), and `victim_region` is
+   surfaced at city level only. Don't add endpoints that expose per-user incident
+   detail or `user_id` without auth scoping.
+5. **Graph build stays out of the request path.** `/intelligence` serves only
+   precomputed snapshots; the NetworkX/Neo4j build runs only as the offline
+   batch job (`python -m server.graph`).
 
-## Architecture (two processes + LiveKit)
+## Architecture (call agent + chat API + intelligence batch)
+
+Three surfaces share **one MongoDB** (collections: `users`, `chats`,
+`incidents`, `intelligence`). FastAPI (`server/app.py`) fronts the chat + read
+APIs and the alert intake; the worker and the graph job are separate runtimes.
 
 ```
-Two phones dial Twilio number
-      │
-      ▼
-Twilio TwiML <Conference>  ──SIP──►  LiveKit Cloud (media server + room)
-                                          │ dispatches job (room + token)
-                                          ▼
-                              Agent Worker  (process 1 — worker/agent.py)
-                                  • connects OUT to LiveKit, registers, idles
-                                  • per call → spawns isolated subprocess (entrypoint)
-                                  • entrypoint joins room, subscribes to caller audio (PCM)
-                                  • PCM → Sarvam streaming STT → rolling transcript buffer
-                                  • every 3–5s → send window → Groq LLM → {scam, confidence, reason}
-                                  • if over threshold → notify FastAPI
-                                          │
-                                          ▼
-                              FastAPI  (process 2 — server/app.py)
-                                  • mints LiveKit access tokens (for browser test joins)
-                                  • receives alerts from worker
-                                  • pushes alert → Expo Push API → FCM → user's phone
+A. REAL-TIME CALL AGENT  (worker/)
+   Two phones → Twilio TwiML <Conference> ─SIP→ LiveKit Cloud (room + job dispatch)
+     → Agent Worker (connects OUT; one isolated subprocess per call)
+         caller PCM → Sarvam streaming STT → rolling transcript window
+         → every 3–5s → Groq LLM → {scam, confidence, reason, red_flags}
+         → over threshold → POST alert → FastAPI → Expo Push API → FCM → phone
+
+B. RAG FRAUD-CHAT  (server/chatbot/, request path)
+   App → FastAPI POST /chatbot/chats/{id}/messages (SSE)
+     → LangChain tool-calling agent over Sarvam
+         tools: search_fraud_knowledge (FAISS) · save_incident / update_incident
+                · lookup_fraud_network (point query)
+     → streams reply to app; persists extracted incidents ───────────► Mongo
+
+C. FRAUD-INTELLIGENCE  (server/graph/, offline batch + read API)
+   Batch `python -m server.graph`: reads incidents ◄──────────────── Mongo
+     → NetworkX co-occurrence graph → Louvain rings + per-entity risk
+     → geocoded hotspots + NCRB deployment ranking
+     → writes `intelligence` snapshots ──────► Mongo  (+ best-effort Neo4j load)
+   App → FastAPI GET /intelligence/{rings,hotspots,high-risk-accounts}
+     → reads precomputed snapshots ◄──────────────────────────────── Mongo
 ```
 
 ### Key facts about the worker
@@ -282,12 +304,3 @@ Notes:
 4. Twilio conference → SIP → LiveKit; test with two real phones.
 5. Dockerize each side (`worker/Dockerfile`, `server/Dockerfile`) and wire
    `docker-compose.yml`.
-
-## Hackathon notes
-
-- All services run on free tiers/credits; real spend ≈ ₹0. Only production telephony
-  minutes cost money (not needed for a demo).
-- Demo with a **dial-in conference** (each caller is a separate participant → you get
-  per-speaker audio + each number) rather than a phone-side merge (mixed audio, no
-  numbers). The conference version enables "caller +91-XXX shows scam patterns".
-- Record the demo once working rather than running it live.
