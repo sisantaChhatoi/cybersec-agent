@@ -10,6 +10,38 @@ The mobile app a protected user runs. It receives real-time **scam warnings** as
 push notifications while the detection agent listens to a call the user has added
 it to. The app is notification-first — the alert _is_ the product.
 
+## ⚠️ Current state vs. the backend (added 2026-06)
+
+The app today is **auth + push-token scaffold + a (static) protection screen**.
+The backend has grown well past the push-alert flow — it now also serves a **RAG
+fraud-chat** and a **fraud-intelligence API** — but **those are not wired into the
+app yet**. They're the obvious next screens.
+
+### Real backend contract (this supersedes the placeholder list at the bottom)
+
+Base URL is `API_URL` in `constants/config.ts`; the typed client is `lib/api.ts`.
+
+- **Auth (JWT bearer):** `POST /auth/signup`, `POST /auth/login`, `GET /auth/me`,
+  `POST /auth/push-token`.
+- **Push test:** `POST /test/notify` — logs the JWT user's real phone, sends the
+  push to the configured test number. Wired to the Test-Notify button on home.
+- **Chat — NOT consumed yet:** `POST /chatbot/chats`, `GET /chatbot/chats`,
+  `GET /chatbot/chats/{id}`, `POST /chatbot/chats/{id}/messages` → an **SSE
+  stream** of the assistant reply. A chat screen would create a chat, then stream
+  messages (use an SSE/`fetch`-stream client, not plain JSON).
+- **Intelligence — NOT consumed yet:** `GET /intelligence/rings`, `/hotspots`,
+  `/high-risk-accounts` → precomputed JSON for a fraud-map / dashboard screen.
+
+### State / gotchas
+- `lib/notifications.ts` registers the Expo push token (`POST /auth/push-token`).
+  **Expo Go (SDK 53+) removed Android remote push** → a real token needs a **dev
+  build / EAS APK**, not Expo Go. "No push token registered" downstream is this.
+- `app/(tabs)/protection.tsx` currently renders **hardcoded mock stats**
+  ("12 calls screened" …) — placeholder, not real data.
+- Tabs are `index` (home, has the Test-Notify button) and `protection`. **No chat
+  or intelligence screen exists yet.**
+- The notification wiring on the backend side is **partially uncommitted**.
+
 ## Stack
 
 | Concern       | Choice                            | Notes                                                                  |

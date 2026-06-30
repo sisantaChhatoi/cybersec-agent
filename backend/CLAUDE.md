@@ -17,6 +17,83 @@ when the conversation shows scam patterns (e.g. OTP/KYC/urgency social engineeri
 tuned for Hindi/English/Hinglish. The user explicitly adds the agent to a call —
 there is no silent or covert listening.
 
+## ⚠️ Scope has grown — read this (added 2026-06)
+
+This service is now **two products in one FastAPI app**:
+
+1. **Real-time call-listening agent** — the LiveKit/Twilio pipeline documented
+   in the rest of this file (`worker/`). Still valid.
+2. **Text RAG fraud-chat + a fraud-intelligence graph layer** (`server/`),
+   migrated in from the former `rag-graph/` prototype. **`rag-graph/` is now
+   deleted**; its design notes live in `backend/docs/fraud-intelligence-overview.md`.
+
+### Layout of the `server/` side (layered: routers → services → repositories)
+
+```
+server/
+  routers/       auth, chatbot, intelligence, test
+  services/      auth_service, chatbot_service, notification_service
+  repositories/  user_repo, chat_repo, incident_repo, intelligence_repo
+  chatbot/       engine (LangChain agent loop), llm (provider factory),
+                 tools (save/update/lookup + KB search), retrieval (FAISS)
+  graph/         build, analyze, geospatial, deployment, ncrb_baseline,
+                 neo4j_*, pipeline, __main__   ← the intelligence batch job
+  models/        user, chat, incident
+```
+Mongo via `shared/db.py` (`AsyncMongoClient`); all settings in `shared/config.py`.
+
+### RAG fraud-chat
+- LangChain **tool-calling agent over Sarvam** (`make_chat_llm()` factory; Groq
+  is the alternate via `chat_provider`). Manual stream loop in `engine.py`
+  (no LangGraph); replies stream over **SSE**.
+- Endpoints: `POST /chatbot/chats`, `GET /chatbot/chats`,
+  `GET /chatbot/chats/{id}`, `POST /chatbot/chats/{id}/messages` (SSE).
+- Tools live in `chatbot/tools.py` — **field semantics are in the tool
+  docstrings, not the prompt**: `search_fraud_knowledge` (FAISS over the KB),
+  `save_incident` (fill-once-then-lock merge), `update_incident` (corrections
+  only), `lookup_fraud_network` (point lookup of a number/account/UPI across
+  *other* incidents). Built per-request with session/user bound.
+- Prompt (`engine.py`): capture-first, ground via the search tool, prefer
+  Hindi/Hinglish, settle in 2–3 clarifications, never ask for OTP/PIN.
+
+### Fraud-intelligence graph (the strong part)
+- **Offline batch job:** `python -m server.graph` reads incidents from Mongo →
+  NetworkX co-occurrence graph → Louvain fraud rings → per-entity risk scoring →
+  geocoded geospatial hotspots + NCRB-weighted deployment ranking → writes
+  snapshot docs to the `intelligence` collection; best-effort Neo4j load.
+- **Read API (app dashboard):** `GET /intelligence/rings`, `/hotspots`
+  (+ deployment strategy), `/high-risk-accounts`. Read-only, served straight
+  from the precomputed snapshots.
+- **Tool-vs-API split:** point lookups are chat *tools*; aggregates are the
+  *API*; graph build is the *batch job*.
+- **Neo4j** runs locally via Docker (`docker-compose.yml`); native vector index
+  + cosine is confirmed working (for a future GraphRAG / similarity pass).
+
+### Gotchas (future sessions — don't relearn these the hard way)
+- **`sarvam-m` is DEPRECATED** → use `sarvam-30b` / `sarvam-105b`
+  (`sarvam_chat_model`). It 400s otherwise.
+- **`/intelligence` only ever reads precomputed snapshots.** Never run the graph
+  build in the request path. If the endpoints return empty, the batch job hasn't
+  run — run `python -m server.graph` once incidents exist.
+- **Neo4j is optional for the batch.** The load is best-effort; the job logs
+  `neo4j_error` and finishes fine if the container is down.
+- **Geocoding** uses Nominatim with a committed cache at
+  `server/graph/data/geocode_cache.json` (1 req/s; caches misses too). A city
+  not in the cache hits the network once.
+- **The async Mongo client is `@lru_cache`d** → it binds to the first event
+  loop. `TestClient` spins a fresh loop per request, so calling several
+  endpoints in one `TestClient` process can raise a Mongo loop error — a **test
+  artifact, not a server bug** (uvicorn uses one persistent loop). Smoke-test one
+  endpoint per process, or use `httpx.AsyncClient` + `ASGITransport`.
+- **Type checking:** a **`ty`** (Astral) pre-commit hook runs on
+  `backend/{server,worker,shared}`; keep it green. The teammate's scratch
+  `test/*.ipynb` is excluded. Pydantic gotcha already handled: pass `SecretStr`
+  for `ChatOpenAI(api_key=...)`.
+- **Incident identity guard:** `caller_number` / `mule_account` / `mule_upi`
+  must never share a value; a real account number (`\d{6,}`) overwrites.
+- **Notification feature is partially uncommitted** (`services/notification_service.py`,
+  `routers/test.py`, `/auth/push-token`) — see `app/CLAUDE.md`.
+
 ## Core principle (do not violate)
 
 The agent only ever listens to a call it has been **added to as a participant**
