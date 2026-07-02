@@ -264,10 +264,20 @@ docker compose up
 > free tier is fine (no UDP tunneling needed).
 
 This is a **single `uv` project** rooted at `backend/`: one `pyproject.toml`,
-one `uv.lock`, one shared `.venv`. Both `server/` and `worker/` are part of the same
-project and share dependencies, so add packages once at the backend root
-(`uv add <pkg>`). Each of `server/` and `worker/` has its **own Dockerfile** so they
-build as separate container images from the same source tree.
+one `uv.lock`, one shared `.venv`. Deps are split into groups so each image installs
+only its slice: base `[project.dependencies]` (used by `shared/`), plus a `server`
+group and a `worker` group. Local dev / pre-commit / `ty` get the full surface via
+`default-groups`; each Dockerfile narrows with `--no-default-groups --group <name>`.
+Add a package to the right group (`uv add --group server <pkg>`); base only for things
+`shared/` needs. `torch` is pinned to the PyTorch **CPU** index (see `[tool.uv.sources]`)
+— this is a CPU-only deployment, so we skip the multi-GB CUDA wheel. Each of `server/`
+and `worker/` has its **own Dockerfile** so they build as separate container images.
+
+> **Native-Linux contributors:** the Dockerfiles use a BuildKit uv cache mount
+> (`RUN --mount=type=cache …`), so you need the **buildx** plugin — e.g. Arch:
+> `sudo pacman -S docker-buildx`, Debian/Ubuntu: `docker-buildx-plugin`. Without it
+> `docker compose up --build` errors with *"the --mount option requires BuildKit"*.
+> **Mac/Windows Docker Desktop already bundles it** — nothing to install.
 
 ## File layout (actual — single uv project)
 
