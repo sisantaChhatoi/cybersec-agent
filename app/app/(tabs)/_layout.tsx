@@ -33,14 +33,12 @@ export default function TabLayout() {
     });
 
     // Tap: navigate to the Alerts tab.
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const data = response.notification.request.content.data as Record<string, unknown>;
-        if (data?.type === 'scam_alert') {
-          router.navigate('/(tabs)/alerts');
-        }
+    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as Record<string, unknown>;
+      if (data?.type === 'scam_alert') {
+        router.navigate('/(tabs)/alerts');
       }
-    );
+    });
 
     return () => {
       notifListener.current?.remove();
@@ -71,11 +69,7 @@ export default function TabLayout() {
         options={{
           title: 'Alerts',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name={focused ? 'warning' : 'warning-outline'}
-              size={size}
-              color={color}
-            />
+            <Ionicons name={focused ? 'warning' : 'warning-outline'} size={size} color={color} />
           ),
         }}
       />

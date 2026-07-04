@@ -64,9 +64,7 @@ function AlertCard({ alert }: { alert: ScamAlert }) {
         <Card style={{ padding: space.lg, gap: space.md }}>
           <AppText variant="label">Red flags</AppText>
           {alert.red_flags.map((flag) => (
-            <View
-              key={flag}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+            <View key={flag} style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
               <Ionicons name="alert-circle" size={14} color={colors.danger} />
               <AppText variant="body">{flag}</AppText>
             </View>
