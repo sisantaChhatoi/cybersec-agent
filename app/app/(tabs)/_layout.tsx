@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 
 import { colors } from '@/constants/design';
 import { api } from '@/lib/api';
+import { getToken } from '@/lib/auth';
 import { setAlert } from '@/lib/alert-store';
 import { registerForPushToken } from '@/lib/notifications';
 
@@ -13,6 +14,10 @@ export default function TabLayout() {
   const responseListener = useRef<Notifications.EventSubscription>();
 
   useEffect(() => {
+    getToken().then((token) => {
+      if (!token) router.replace('/signup');
+    });
+
     registerForPushToken()
       .then((token) => (token ? api.registerPushToken(token) : null))
       .catch(() => null);
