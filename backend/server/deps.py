@@ -14,8 +14,7 @@ from server.repositories.incident_repo import IncidentRepository
 from server.repositories.user_repo import UserRepository
 from server.services.auth_service import AuthService
 from server.services.chatbot_service import ChatbotService
-
-# from server.services.notification_service import NotificationService
+from server.services.notification_service import NotificationService
 from shared.config import settings
 from shared.db import get_database
 
@@ -63,8 +62,8 @@ def get_chatbot_service(
     return ChatbotService(chats, incidents, engine, settings.chat_history_limit)
 
 
-# def get_notification_service() -> NotificationService:
-#     return NotificationService()
+def get_notification_service() -> NotificationService:
+    return NotificationService()
 
 
 async def get_current_user(

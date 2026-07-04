@@ -76,4 +76,11 @@ export const api = {
   login: (phone_no: string, password: string) =>
     request<AuthResponse>('/auth/login', { method: 'POST', body: { phone_no, password } }),
   me: () => request<UserPublic>('/auth/me', { auth: true }),
+  registerPushToken: (push_token: string) =>
+    request<null>('/auth/push-token', { method: 'POST', body: { push_token }, auth: true }),
+  testNotify: () =>
+    request<{ status: string; resolved_phone: string; test_target: string }>('/test/notify', {
+      method: 'POST',
+      auth: true,
+    }),
 };

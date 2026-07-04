@@ -40,6 +40,11 @@ class UserPublic(BaseModel):
 
 class UserInDB(UserPublic):
     password_hash: str
+    push_token: str | None = None
+
+
+class PushTokenRequest(BaseModel):
+    push_token: str
 
 
 class AuthResponse(BaseModel):

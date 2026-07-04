@@ -4,3 +4,7 @@
 .vscode
 .env
 .gemini
+
+# built app binaries (pulled from EAS)
+*.apk
+*.aab

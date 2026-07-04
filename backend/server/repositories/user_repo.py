@@ -21,3 +21,8 @@ class UserRepository:
     async def get_by_phone(self, phone_no: str) -> UserInDB | None:
         doc = await self._col.find_one({"phone_no": phone_no})
         return UserInDB(**doc) if doc else None
+
+    async def set_push_token(self, user_id: str, push_token: str) -> None:
+        await self._col.update_one(
+            {"user_id": user_id}, {"$set": {"push_token": push_token}}
+        )

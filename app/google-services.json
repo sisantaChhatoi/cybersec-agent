@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "166386659172",
+    "project_id": "scamcall-df27e",
+    "storage_bucket": "scamcall-df27e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:166386659172:android:c1cd5e0b27ce574404d471",
+        "android_client_info": {
+          "package_name": "com.scamcall.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB8zsglIBAioyHFG35rGznzcDJFo5BOKO8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
