@@ -35,7 +35,9 @@ server/
                  tools (save/update/lookup + KB search), retrieval (FAISS)
   graph/         build, analyze, geospatial, deployment, ncrb_baseline,
                  neo4j_*, pipeline, __main__   ← the intelligence batch job
-  models/        user, chat, incident
+  core/          security (JWT)
+  models/        user, chat, incident, notification
+  deps.py        DI wiring (db, repos, services, current-user)
 ```
 Mongo via `shared/db.py` (`AsyncMongoClient`); all settings in `shared/config.py`.
 
@@ -192,17 +194,17 @@ C. FRAUD-INTELLIGENCE  (server/graph/, offline batch + read API)
 | STT            | Sarvam **streaming** STT         | WebSocket, Saaras v3. Hinglish/code-mixing, diarization, <150ms first token. |
 | LLM (detector) | Groq — Llama 3.3 70B             | OpenAI-compatible API, fast, free tier. (Sarvam's LLM is a free Hinglish-native alternative.) |
 | Push           | Expo Push API → FCM              | Outbound HTTPS from server; works from localhost. |
-| Storage        | MongoDB (Docker container)       | Persists call records, transcripts, detection results/alerts, device push tokens. Driver: `pymongo` async (`AsyncMongoClient`). Written by worker, read/served by FastAPI. |
-| Deploy         | Docker + docker-compose          | worker container + FastAPI container + MongoDB container. LiveKit is Cloud-hosted (no LiveKit container). FastAPI exposed via ngrok for Twilio webhook + browser token fetch. |
+| Storage        | MongoDB (Docker container)       | Persists call records (`calls`), alert history (`notifications`), device push tokens (`users`), plus chat + incident data. Driver: `pymongo` async (`AsyncMongoClient`). Worker writes calls; server writes/reads the rest. |
+| Deploy         | Docker + docker-compose          | worker container + FastAPI container + MongoDB container. LiveKit is Cloud-hosted (no LiveKit container). FastAPI exposed via ngrok so the phone app can reach the API. |
 
 ## Python dependencies (single uv project — add at backend root)
 
 ```bash
 uv add livekit-agents          # worker: cli.run_app + entrypoint, rtc audio frames
-uv add livekit-api             # server: mint access tokens
+uv add livekit-api             # worker group: LiveKit server SDK (not currently wired)
 uv add "fastapi[standard]"     # server: FastAPI + bundled uvicorn
-uv add websockets              # shared/sarvam_stt.py: Sarvam streaming STT WS client
-uv add httpx                   # server: Expo push call (+ outbound HTTP)
+uv add websockets              # shared/stt/sarvam.py: Sarvam streaming STT WS client
+uv add httpx                   # server: Expo push call; worker: POST /alerts
 uv add python-dotenv           # load backend/.env in both processes
 uv add pymongo                 # storage: AsyncMongoClient (worker writes, server reads)
 # groq — already present
@@ -211,7 +213,7 @@ uv add pymongo                 # storage: AsyncMongoClient (worker writes, serve
 - `pydantic` ships with FastAPI — reuse it in `detector.py` to validate the LLM JSON; don't add separately.
 - `pymongo` (not `motor`) — async support is now built into PyMongo via `AsyncMongoClient`; Motor reached end-of-life May 2026. No ODM (Beanie/MongoEngine) — pymongo + pydantic models is enough.
 - `numpy` — optional; `rtc.AudioResampler` already does the 48k→16k PCM resample Sarvam needs. Add only if manipulating raw samples.
-- `twilio` — optional; TwiML is served as static `conference.xml`. Only needed for dynamic TwiML / programmatic number management.
+- `twilio` — optional; the TwiML lives on the Twilio side (`sip/twiml-bin.xml` is the committed template that dials into the LiveKit SIP trunk). Only needed for dynamic TwiML / programmatic number management.
 
 ## Detection logic (the business logic)
 
@@ -249,7 +251,7 @@ Lives in a shared module `detector.py`, imported by the worker (and reusable by 
 ## Environment variables
 
 ```
-pLIVEKIT_URL=wss://<your-project>.livekit.cloud   # from LiveKit Cloud dashboard
+LIVEKIT_URL=wss://<your-project>.livekit.cloud   # from LiveKit Cloud dashboard
 LIVEKIT_API_KEY=
 LIVEKIT_API_SECRET=
 SARVAM_API_KEY=                      # **Sarvam** streaming STT (Saaras) — from Sarvam dashboard
@@ -272,17 +274,17 @@ docker run --rm -p 27017:27017 -v mongo-data:/data/db mongo:7
 # Agent worker (long-running; spawns a subprocess per call)
 uv run python -m worker.agent dev
 
-# FastAPI server (token endpoint + alert push)
+# FastAPI server (app API: auth + chat + intelligence + alert intake)
 uv run uvicorn server.app:app --reload --port 8000
 
-# Expose FastAPI for Twilio webhook + browser token fetch (free tier OK; HTTP only)
-ngrok http 8000   # update the Twilio webhook URL after each restart (URL rotates)
+# Expose FastAPI so the phone app can reach the API (free tier OK; HTTP only)
+ngrok http 8000   # URL rotates on restart — update the app's API base URL
 
 # Everything together (worker + server + mongo)
 docker compose up
 ```
 
-> **Serving:** ngrok only carries FastAPI's HTTP (token endpoint + Twilio webhook).
+> **Serving:** ngrok only carries FastAPI's HTTP (the app's API calls).
 > WebRTC media and SIP go **directly to LiveKit Cloud**, never through ngrok — so the
 > free tier is fine (no UDP tunneling needed).
 
@@ -314,6 +316,7 @@ backend/                      # uv project root (pyproject.toml, uv.lock, .venv,
 ├── shared/                   # code imported by BOTH server and worker
 │   ├── detector.py           # scam-detection logic (Groq call + JSON schema + hysteresis)
 │   ├── db.py                 # AsyncMongoClient handle
+│   ├── config.py             # all settings (pydantic-settings)
 │   ├── stt/                  # Sarvam streaming STT client (base + factory + sarvam)
 │   ├── models/call.py        # CallRecord (persisted per call)
 │   └── repositories/         # call_repo (calls collection) + user_directory (phone→user_id)
@@ -324,8 +327,15 @@ backend/                      # uv project root (pyproject.toml, uv.lock, .venv,
 │   └── call_recorder.py      # per-call persistence + throttled POST /alerts
 └── server/                   # FastAPI app (own container)
     ├── Dockerfile
-    ├── app.py                # FastAPI: token endpoint, alert intake, Expo push
-    └── twiml/conference.xml  # TwiML for the dial-in conference
+    ├── app.py                # create_app: registers routers + ensure_indexes on startup
+    ├── deps.py               # DI wiring (db, repos, services, current-user)
+    ├── routers/              # auth, chatbot, intelligence, alerts, notifications, test
+    ├── services/             # auth_service, chatbot_service, notification_service
+    ├── repositories/         # user, chat, incident, notification, intelligence
+    ├── models/               # user, chat, incident, notification
+    ├── core/                 # security (JWT)
+    ├── chatbot/              # LangChain engine + tools + FAISS retrieval
+    └── graph/                # fraud-intelligence batch job
 ```
 
 Notes:
@@ -340,11 +350,11 @@ Notes:
 
 ## Build order (do the smallest loop first)
 
-1. `shared/detector.py` + `shared/sarvam_stt.py`, tested against a **saved audio clip**
+1. `shared/detector.py` + `shared/stt/sarvam.py`, tested against a **saved audio clip**
    (zero live credits). Prove: audio → transcript → `{scam, confidence, reason}`.
 2. `worker/agent.py` entrypoint wiring those into a LiveKit room; test via
    **browser/WebRTC** (no phone number needed).
-3. `server/app.py` token endpoint + alert push.
+3. `server/app.py` alert intake (`POST /alerts`) + Expo push.
 4. Twilio conference → SIP → LiveKit; test with two real phones.
 5. Dockerize each side (`worker/Dockerfile`, `server/Dockerfile`) and wire
    `docker-compose.yml`.
