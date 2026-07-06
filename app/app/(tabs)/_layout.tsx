@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Notifications from 'expo-notifications';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { router, Tabs } from 'expo-router';
 import { useEffect, useRef } from 'react';
 
@@ -7,51 +7,58 @@ import { colors } from '@/constants/design';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 import { setAlert } from '@/lib/alert-store';
-import { registerForPushToken } from '@/lib/notifications';
+
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 export default function TabLayout() {
-  // @ts-ignore
-  const notifListener = useRef<Notifications.EventSubscription>();
-  // @ts-ignore
-  const responseListener = useRef<Notifications.EventSubscription>();
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     getToken().then((token) => {
       if (!token) router.replace('/onboarding');
     });
 
-    registerForPushToken()
-      .then((token) => (token ? api.registerPushToken(token) : null))
-      .catch(() => null);
+    if (!isExpoGo) {
+      // Dynamic require keeps expo-notifications out of the module graph in Expo Go.
+      // Both modules run side effects on load that crash Expo Go SDK 53+.
+      const { registerForPushToken } =
+        require('@/lib/notifications') as typeof import('@/lib/notifications');
+      const Notifications = require('expo-notifications') as typeof import('expo-notifications');
 
-    // Foreground: store alert data so the Alerts tab updates immediately.
-    notifListener.current = Notifications.addNotificationReceivedListener((notification) => {
-      const data = notification.request.content.data as Record<string, unknown>;
-      if (data?.type === 'scam_alert') {
-        setAlert({
-          scam: true,
-          confidence: (data.confidence as number) ?? 1,
-          reason: (data.reason as string) ?? '',
-          red_flags: (data.red_flags as string[]) ?? [],
-          caller: (data.caller as string | null) ?? null,
-          received_at: new Date().toISOString(),
-        });
-      }
-    });
+      registerForPushToken()
+        .then((token) => (token ? api.registerPushToken(token) : null))
+        .catch(() => null);
 
-    // Tap: navigate to the Alerts tab.
-    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data as Record<string, unknown>;
-      if (data?.type === 'scam_alert') {
-        // @ts-ignore
-        router.navigate('/(tabs)/alerts');
-      }
-    });
+      const notifListener = Notifications.addNotificationReceivedListener((notification) => {
+        const data = notification.request.content.data as Record<string, unknown>;
+        if (data?.type === 'scam_alert') {
+          setAlert({
+            scam: true,
+            confidence: (data.confidence as number) ?? 1,
+            reason: (data.reason as string) ?? '',
+            red_flags: (data.red_flags as string[]) ?? [],
+            caller: (data.caller as string | null) ?? null,
+            received_at: new Date().toISOString(),
+          });
+        }
+      });
 
-    return () => {
-      notifListener.current?.remove();
-      responseListener.current?.remove();
-    };
+      const responseListener = Notifications.addNotificationResponseReceivedListener(
+        (response) => {
+          const data = response.notification.request.content.data as Record<string, unknown>;
+          if (data?.type === 'scam_alert') {
+            router.navigate('/(tabs)/alerts');
+          }
+        },
+      );
+
+      cleanupRef.current = () => {
+        notifListener.remove();
+        responseListener.remove();
+      };
+    }
+
+    return () => cleanupRef.current?.();
   }, []);
 
   return (
@@ -61,30 +68,31 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.brand,
         tabBarInactiveTintColor: colors.faint,
         tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarShowLabel: false,
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="alerts"
+        name="chat"
         options={{
-          title: 'Alerts',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'warning' : 'warning-outline'} size={size} color={color} />
+            <Ionicons
+              name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'}
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="protection"
         options={{
-          title: 'Protection',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons
               name={focused ? 'shield-checkmark' : 'shield-checkmark-outline'}
@@ -93,6 +101,10 @@ export default function TabLayout() {
             />
           ),
         }}
+      />
+      <Tabs.Screen
+        name="alerts"
+        options={{ href: null }}
       />
     </Tabs>
   );
