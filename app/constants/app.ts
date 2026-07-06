@@ -1,5 +1,7 @@
 export const APP_NAME = 'CallGuard';
 
+export const AGENT_PHONE_NO = '+15106501647';
+
 // English + Hinglish, then the 22 official languages (8th Schedule).
 export const INDIAN_LANGUAGES = [
   'English',

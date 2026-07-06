@@ -81,6 +81,19 @@ export type Notification = {
   sent_at: string;
 };
 
+export type CallStats = {
+  scanned: number;
+  threats_blocked: number;
+  marked_safe: number;
+  last_scanned_at: string | null;
+};
+
+export type CallSummary = {
+  started_at: string;
+  ended_at: string | null;
+  flagged: boolean;
+};
+
 export const api = {
   signup: (payload: SignupPayload) =>
     request<AuthResponse>('/auth/signup', { method: 'POST', body: payload }),
@@ -98,4 +111,7 @@ export const api = {
   listChats: () => request<ChatSummary[]>('/chatbot/chats', { auth: true }),
   getChat: (id: string) => request<Chat>(`/chatbot/chats/${id}`, { auth: true }),
   getNotifications: () => request<Notification[]>('/notifications', { auth: true }),
+  getCallStats: () => request<CallStats>('/calls/stats', { auth: true }),
+  getRecentCalls: (limit: number) =>
+    request<CallSummary[]>(`/calls?limit=${limit}`, { auth: true }),
 };

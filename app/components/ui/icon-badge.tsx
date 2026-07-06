@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { colors, radius } from '@/constants/design';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
-type Tone = 'brand' | 'neutral' | 'danger' | 'success';
+type Tone = 'brand' | 'neutral' | 'danger' | 'success' | 'cyan' | 'pink' | 'amber';
 type Size = 'sm' | 'md' | 'lg';
 
 const TONES: Record<Tone, { bg: string; fg: string }> = {
@@ -12,6 +12,9 @@ const TONES: Record<Tone, { bg: string; fg: string }> = {
   neutral: { bg: colors.surfaceAlt, fg: colors.body },
   danger: { bg: colors.dangerTint, fg: colors.danger },
   success: { bg: colors.successTint, fg: colors.success },
+  cyan: { bg: colors.cyanTint, fg: colors.cyan },
+  pink: { bg: colors.pinkTint, fg: colors.pink },
+  amber: { bg: colors.amberTint, fg: colors.amber },
 };
 
 const SIZES: Record<Size, { box: number; icon: number; r: number }> = {

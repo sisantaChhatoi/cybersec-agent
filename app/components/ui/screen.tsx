@@ -13,7 +13,7 @@ export function Screen({
   scroll?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
 }) {
-  const padding = { padding: space.xl, gap: space.xl };
+  const padding = { padding: space.xl, gap: space.huge };
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top']}>
       {scroll ? (

@@ -37,7 +37,7 @@ export default function AlertsScreen() {
 
   return (
     <Screen>
-      <SectionHeader eyebrow="History" title="Scam Alerts" />
+      <SectionHeader eyebrow="History" icon="time-outline" />
       {error && loaded && items.length === 0 ? (
         <LoadError message={error} />
       ) : items.length > 0 ? (
