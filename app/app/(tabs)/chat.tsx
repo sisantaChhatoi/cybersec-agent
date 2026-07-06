@@ -17,7 +17,7 @@ import { AppText } from '@/components/ui/app-text';
 import { TopBar } from '@/components/ui/top-bar';
 import { API_URL } from '@/constants/config';
 import { colors, radius, space } from '@/constants/design';
-import { api, type Chat } from '@/lib/api';
+import { api, type ChatSummary } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 
 type Msg = { id: string; role: 'user' | 'assistant'; content: string };
@@ -30,7 +30,7 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
-  const [chats, setChats] = useState<Chat[]>([]);
+  const [chats, setChats] = useState<ChatSummary[]>([]);
   const [loadingChats, setLoadingChats] = useState(false);
   const flatListRef = useRef<FlatList<Msg>>(null);
 
@@ -54,7 +54,11 @@ export default function ChatScreen() {
     try {
       const detail = await api.getChat(chatId);
       setMessages(
-        detail.messages.map((m, i) => ({ id: `${chatId}-${i}`, role: m.role, content: m.content })),
+        detail.messages.map((m, i) => ({
+          id: `${chatId}-${i}`,
+          role: m.role === 'agent' ? 'assistant' : 'user',
+          content: m.message,
+        })),
       );
       setActiveChatId(chatId);
       setTab('new');
@@ -77,7 +81,7 @@ export default function ChatScreen() {
       let chatId = activeChatId;
       if (!chatId) {
         const chat = await api.createChat();
-        chatId = chat.id;
+        chatId = chat.chat_id;
         setActiveChatId(chatId);
       }
 
@@ -88,7 +92,7 @@ export default function ChatScreen() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ content: text }),
+        body: JSON.stringify({ message: text }),
       });
 
       const reader = res.body?.getReader();
@@ -105,7 +109,7 @@ export default function ChatScreen() {
           buffer = lines.pop() ?? '';
           for (const line of lines) {
             if (line.startsWith('data: ')) {
-              const chunk = line.slice(6).trim();
+              const chunk = line.slice(6).replace(/\r$/, '');
               if (chunk && chunk !== '[DONE]') {
                 assembled += chunk;
                 setMessages((prev) => [
@@ -230,7 +234,7 @@ function HistoryView({
   onSelect,
   onNewChat,
 }: {
-  chats: Chat[];
+  chats: ChatSummary[];
   loading: boolean;
   onSelect: (id: string) => void;
   onNewChat: () => void;
@@ -262,24 +266,16 @@ function HistoryView({
   return (
     <FlatList
       data={chats}
-      keyExtractor={(c) => c.id}
+      keyExtractor={(c) => c.chat_id}
       contentContainerStyle={{ padding: space.lg, gap: space.sm }}
       renderItem={({ item }) => (
         <Pressable
-          onPress={() => onSelect(item.id)}
+          onPress={() => onSelect(item.chat_id)}
           style={({ pressed }) => [styles.chatRow, { opacity: pressed ? 0.7 : 1 }]}>
           <Ionicons name="chatbubble-outline" size={18} color={colors.teal} />
           <View style={{ flex: 1 }}>
             <AppText variant="bodyStrong" numberOfLines={1}>
-              Chat {item.id.slice(0, 8)}…
-            </AppText>
-            <AppText variant="caption">
-              {new Date(item.created_at).toLocaleDateString('en-IN', {
-                day: 'numeric',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
+              {item.title}
             </AppText>
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.faint} />
