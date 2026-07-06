@@ -18,6 +18,7 @@ from server.services.chatbot_service import ChatbotService
 from server.services.notification_service import NotificationService
 from shared.config import settings
 from shared.db import get_database
+from shared.repositories.call_repo import CallRepository
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -54,6 +55,12 @@ def get_notification_repository(
     db: Annotated[AsyncDatabase, Depends(get_db)],
 ) -> NotificationRepository:
     return NotificationRepository(db)
+
+
+def get_call_repository(
+    db: Annotated[AsyncDatabase, Depends(get_db)],
+) -> CallRepository:
+    return CallRepository(db)
 
 
 @lru_cache

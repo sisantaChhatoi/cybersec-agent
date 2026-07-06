@@ -10,3 +10,16 @@ class CallRecord(BaseModel):
     started_at: datetime
     ended_at: datetime | None = None
     last_notified_at: datetime | None = None
+
+
+class CallStats(BaseModel):
+    scanned: int
+    threats_blocked: int
+    marked_safe: int
+    last_scanned_at: datetime | None = None
+
+
+class CallSummary(BaseModel):
+    started_at: datetime
+    ended_at: datetime | None = None
+    flagged: bool

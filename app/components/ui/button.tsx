@@ -8,7 +8,7 @@ type IconName = React.ComponentProps<typeof Ionicons>['name'];
 type Variant = 'primary' | 'secondary' | 'ghost';
 
 const STYLES: Record<Variant, { bg: string; border: string; fg: string }> = {
-  primary: { bg: colors.brand, border: colors.brand, fg: colors.white },
+  primary: { bg: colors.ink, border: colors.ink, fg: colors.white },
   secondary: { bg: colors.surface, border: colors.borderStrong, fg: colors.ink },
   ghost: { bg: 'transparent', border: 'transparent', fg: colors.brand },
 };

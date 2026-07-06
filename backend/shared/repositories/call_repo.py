@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from pymongo.asynchronous.database import AsyncDatabase
 
-from shared.models.call import CallRecord
+from shared.models.call import CallRecord, CallStats, CallSummary
 
 
 class CallRepository:
@@ -55,3 +55,37 @@ class CallRepository:
     async def get(self, room_name: str) -> CallRecord | None:
         doc = await self._col.find_one({"room_name": room_name})
         return CallRecord(**doc) if doc else None
+
+    async def stats_for_user(self, user_id: str) -> CallStats:
+        scanned = await self._col.count_documents({"user_id": user_id})
+        threats_blocked = await self._col.count_documents(
+            {"user_id": user_id, "last_notified_at": {"$ne": None}}
+        )
+        latest = await self._col.find_one(
+            {"user_id": user_id},
+            sort=[("started_at", -1)],
+            projection={"started_at": 1},
+        )
+        return CallStats(
+            scanned=scanned,
+            threats_blocked=threats_blocked,
+            marked_safe=scanned - threats_blocked,
+            last_scanned_at=latest["started_at"] if latest else None,
+        )
+
+    async def recent_for_user(self, user_id: str, limit: int) -> list[CallSummary]:
+        cursor = self._col.find(
+            {"user_id": user_id},
+            projection={"started_at": 1, "ended_at": 1, "last_notified_at": 1},
+            sort=[("started_at", -1)],
+            limit=limit,
+        )
+        docs = await cursor.to_list(length=limit)
+        return [
+            CallSummary(
+                started_at=d["started_at"],
+                ended_at=d.get("ended_at"),
+                flagged=d.get("last_notified_at") is not None,
+            )
+            for d in docs
+        ]

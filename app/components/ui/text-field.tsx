@@ -66,7 +66,7 @@ export function TextField({
           placeholderTextColor={colors.faint}
           style={[
             { flex: 1, paddingVertical: 0, color: colors.ink },
-            { fontSize: typography.body.fontSize, fontWeight: typography.body.fontWeight },
+            { fontSize: typography.body.fontSize, fontFamily: typography.body.fontFamily },
             style,
           ]}
         />

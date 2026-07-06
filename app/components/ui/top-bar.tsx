@@ -8,7 +8,6 @@ import { colors, radius, space } from '@/constants/design';
 import { api, type UserPublic } from '@/lib/api';
 import { clearToken } from '@/lib/auth';
 import { AppText } from './app-text';
-import { IconBadge } from './icon-badge';
 
 let _userCache: UserPublic | null = null;
 
@@ -33,7 +32,6 @@ export function TopBar({ title }: { title?: string }) {
     <>
       <View style={styles.bar}>
         <View style={styles.left}>
-          <IconBadge name="shield-checkmark" tone="brand" size="sm" />
           <AppText variant="heading">{title ?? APP_NAME}</AppText>
         </View>
         <View style={styles.right}>
