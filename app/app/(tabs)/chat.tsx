@@ -17,6 +17,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import Markdown from 'react-native-markdown-display';
+
 import { AppText } from '@/components/ui/app-text';
 import { API_URL } from '@/constants/config';
 import { colors, radius, space } from '@/constants/design';
@@ -385,17 +387,63 @@ function ChatIntroModal({ visible, onClose }: { visible: boolean; onClose: () =>
 
 function MessageBubble({ msg }: { msg: Msg }) {
   const isUser = msg.role === 'user';
+  if (isUser) {
+    return (
+      <View style={[styles.bubble, styles.bubbleUser]}>
+        <AppText variant="body" color={colors.white}>
+          {msg.content || '…'}
+        </AppText>
+      </View>
+    );
+  }
   return (
-    <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}>
-      <AppText
-        variant="body"
-        color={isUser ? colors.white : colors.ink}
-        style={isUser ? undefined : { lineHeight: 22 }}>
-        {msg.content || '…'}
-      </AppText>
+    <View style={[styles.bubble, styles.bubbleAssistant]}>
+      <Markdown style={mdStyles}>{msg.content || '…'}</Markdown>
     </View>
   );
 }
+
+const mdStyles = {
+  body: { color: colors.ink, fontSize: 15, lineHeight: 22 },
+  paragraph: { color: colors.ink, fontSize: 15, lineHeight: 22, marginTop: 0, marginBottom: 6 },
+  strong: { color: colors.ink, fontWeight: '600' as const },
+  em: { color: colors.body },
+  heading1: { color: colors.ink, fontSize: 18, fontWeight: '700' as const, marginBottom: 6 },
+  heading2: { color: colors.ink, fontSize: 16, fontWeight: '700' as const, marginBottom: 4 },
+  heading3: { color: colors.ink, fontSize: 15, fontWeight: '600' as const, marginBottom: 4 },
+  bullet_list: { marginVertical: 4 },
+  ordered_list: { marginVertical: 4 },
+  list_item: { marginVertical: 2 },
+  code_inline: {
+    backgroundColor: colors.surfaceAlt,
+    color: colors.brand,
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    fontSize: 13,
+  },
+  fence: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.sm,
+    padding: space.md,
+    marginVertical: 6,
+  },
+  code_block: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.sm,
+    padding: space.md,
+    fontSize: 13,
+    color: colors.ink,
+  },
+  link: { color: colors.brand },
+  blockquote: {
+    borderLeftWidth: 3,
+    borderLeftColor: colors.brand,
+    paddingLeft: space.md,
+    marginVertical: 4,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 4,
+  },
+};
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
