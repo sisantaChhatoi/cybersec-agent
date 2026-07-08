@@ -56,5 +56,8 @@ class Settings(BaseSettings):
     graph_rebuild_interval_hours: int = 6
     internal_api_key: str = "dev-internal-key"
 
+    google_safe_browsing_key: str = ""
+    virustotal_key: str = ""
+
 
 settings = Settings()

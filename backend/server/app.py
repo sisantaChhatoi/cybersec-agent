@@ -13,6 +13,7 @@ from server.routers import (
     calls,
     chatbot,
     intelligence,
+    link_check,
     notifications,
     test,
 )
@@ -39,6 +40,7 @@ def create_app() -> FastAPI:
     app.include_router(alerts.router)
     app.include_router(calls.router)
     app.include_router(notifications.router)
+    app.include_router(link_check.router)
     app.include_router(test.router)
     return app
 

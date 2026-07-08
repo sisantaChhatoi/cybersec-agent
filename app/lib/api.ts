@@ -88,6 +88,13 @@ export type CallStats = {
   last_scanned_at: string | null;
 };
 
+export type LinkCheckResult = {
+  url: string;
+  verdict: 'safe' | 'unsafe';
+  google_safe_browsing: { safe: boolean; threat: string | null };
+  virustotal: { safe: boolean | null; malicious: number; suspicious: number; note: string | null };
+};
+
 export type CallSummary = {
   started_at: string;
   ended_at: string | null;
@@ -114,4 +121,6 @@ export const api = {
   getCallStats: () => request<CallStats>('/calls/stats', { auth: true }),
   getRecentCalls: (limit: number) =>
     request<CallSummary[]>(`/calls?limit=${limit}`, { auth: true }),
+  checkLink: (url: string) =>
+    request<LinkCheckResult>('/link-check', { method: 'POST', body: { url }, auth: true }),
 };
