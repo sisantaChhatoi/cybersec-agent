@@ -1,6 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { fetch } from 'expo/fetch';
-import * as SecureStore from 'expo-secure-store';
+const SecureStore = {
+  getItemAsync: (key: string) =>
+    Platform.OS === 'web'
+      ? Promise.resolve(localStorage.getItem(key))
+      : require('expo-secure-store').getItemAsync(key),
+  setItemAsync: (key: string, value: string) =>
+    Platform.OS === 'web'
+      ? Promise.resolve(localStorage.setItem(key, value))
+      : require('expo-secure-store').setItemAsync(key, value),
+};
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -18,6 +27,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/ui/app-text';
+import { MarkdownText } from '@/components/ui/markdown-text';
 import { API_URL } from '@/constants/config';
 import { colors, radius, space } from '@/constants/design';
 import { api, type ChatSummary } from '@/lib/api';
@@ -69,10 +79,10 @@ export default function ChatScreen() {
   }, []);
 
   useEffect(() => {
-    SecureStore.getItemAsync('chat_intro_seen').then((v) => {
+    SecureStore.getItemAsync('chat_intro_seen').then((v: string | null) => {
       if (!v) setShowIntro(true);
     });
-    SecureStore.getItemAsync(LAST_CHAT_KEY).then((id) => {
+    SecureStore.getItemAsync(LAST_CHAT_KEY).then((id: string | null) => {
       if (id) openChat(id);
     });
   }, [openChat]);
@@ -387,12 +397,13 @@ function MessageBubble({ msg }: { msg: Msg }) {
   const isUser = msg.role === 'user';
   return (
     <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}>
-      <AppText
-        variant="body"
-        color={isUser ? colors.white : colors.ink}
-        style={isUser ? undefined : { lineHeight: 22 }}>
-        {msg.content || '…'}
-      </AppText>
+      {isUser ? (
+        <AppText variant="body" color={colors.white}>
+          {msg.content || '…'}
+        </AppText>
+      ) : (
+        <MarkdownText content={msg.content || '…'} color={colors.ink} />
+      )}
     </View>
   );
 }
