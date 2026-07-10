@@ -2,5 +2,28 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "description": "Expo SDK owns these versions (bundledNativeModules). Bump them only via `expo install` / an SDK upgrade, never Renovate — out-of-lockstep bumps break the native build.",
+      "matchPackageNames": [
+        "expo",
+        "react",
+        "react-dom",
+        "react-native",
+        "@types/react",
+        "react-native-gesture-handler",
+        "react-native-reanimated",
+        "react-native-safe-area-context",
+        "react-native-screens",
+        "react-native-svg",
+        "react-native-web",
+        "react-native-worklets",
+        "/^expo-/",
+        "/^@expo//",
+        "/^@react-native//"
+      ],
+      "enabled": false
+    }
   ]
 }
