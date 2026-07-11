@@ -262,7 +262,7 @@ worker = [
 
 [package.metadata]
 requires-dist = [
-    { name = "groq", specifier = "<1" },
+    { name = "groq", specifier = "<2" },
     { name = "pydantic-settings", specifier = ">=2.14.2" },
     { name = "pymongo", specifier = ">=4.17.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
