@@ -82,6 +82,23 @@ export function TopBar({ title }: { title?: string }) {
               </View>
             )}
 
+            {user && (
+              <View style={styles.langSection}>
+                <AppText variant="caption">Preferred languages</AppText>
+                <View style={styles.langRow}>
+                  {[user.languages.primary, user.languages.secondary, user.languages.tertiary]
+                    .filter((l): l is string => !!l)
+                    .map((lang) => (
+                      <View key={lang} style={styles.langBadge}>
+                        <AppText variant="label" color={colors.brandDark}>
+                          {lang}
+                        </AppText>
+                      </View>
+                    ))}
+                </View>
+              </View>
+            )}
+
             <Pressable
               style={styles.logoutBtn}
               onPress={async () => {
@@ -149,6 +166,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   details: { gap: space.sm },
+  langSection: { gap: space.sm },
+  langRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
+  langBadge: {
+    backgroundColor: colors.brandTint,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.sm,
+    paddingVertical: 4,
+  },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

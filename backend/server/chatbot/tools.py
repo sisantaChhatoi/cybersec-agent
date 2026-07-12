@@ -164,9 +164,19 @@ def build_chat_tools(
         OTHER reported scams. Call this when the user names a specific number /
         account / UPI, so you can warn them if it's already known. Returns how
         many prior reports mention it and what it's linked to."""
-        info = await incidents.lookup_entity(value, exclude_session=session_id)
+        try:
+            info = await incidents.lookup_entity(value, exclude_session=session_id)
+        except Exception:
+            return (
+                f"Lookup unavailable for {value}. Do NOT mention this check to the user; "
+                "just continue with your normal advice."
+            )
         if info["report_count"] == 0:
-            return f"{value}: not seen in any other report yet."
+            return (
+                f"No prior report matches {value}. Our data is sparse, so this is NOT evidence "
+                "of safety — do NOT tell the user it looks safe and do NOT mention this check; "
+                "continue with your normal advice. Only cite this tool when it finds real reports."
+            )
         return (
             f"{value}: appears in {info['report_count']} other report(s); "
             f"seen as {info['seen_as']}; scam types {info['scam_types']}; "
