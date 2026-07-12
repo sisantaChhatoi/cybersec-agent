@@ -1,8 +1,11 @@
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from server.chatbot.retrieval import warm as warm_retrieval
 from server.graph.scheduler import start_scheduler, stop_scheduler
 from server.repositories.chat_repo import ChatRepository
 from server.repositories.incident_repo import IncidentRepository
@@ -20,6 +23,10 @@ from server.routers import (
 )
 from shared.db import get_database
 
+logging.basicConfig(level=logging.INFO)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -28,6 +35,11 @@ async def lifespan(_: FastAPI):
     await ChatRepository(db).ensure_indexes()
     await IncidentRepository(db).ensure_indexes()
     await NotificationRepository(db).ensure_indexes()
+    try:
+        await asyncio.to_thread(warm_retrieval)
+        logger.info("knowledge-base index ready")
+    except Exception:
+        logger.exception("knowledge-base warmup failed; will build lazily on first use")
     start_scheduler()
     yield
     stop_scheduler()

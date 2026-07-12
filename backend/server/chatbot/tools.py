@@ -1,3 +1,4 @@
+import asyncio
 from typing import Literal
 
 from langchain_core.tools import BaseTool, tool
@@ -20,24 +21,25 @@ _REPORT_FIELDS = [
 async def check_link_safety(url: str) -> str:
     """Check whether a URL shared by the user is safe or malicious.
     Call this whenever the user pastes or mentions any link/URL.
-    Returns a verdict (safe/unsafe), threat type if flagged, and VirusTotal stats."""
-    try:
-        gsb, vt = await check_gsb(url), await check_vt(url)
-        overall_safe = gsb["safe"] and (vt["safe"] is not False)
-        verdict = "SAFE" if overall_safe else "UNSAFE ⚠️"
-        parts = [f"Link verdict: {verdict}", f"URL: {url}"]
-        if not gsb["safe"] and gsb.get("threat"):
-            parts.append(f"Google Safe Browsing: flagged as {gsb['threat'].replace('_', ' ').lower()}")
-        else:
-            parts.append("Google Safe Browsing: clean")
-        if vt.get("note") == "queued":
-            parts.append("VirusTotal: URL submitted for scanning (check back later)")
-        else:
-            mal, sus = vt.get("malicious", 0), vt.get("suspicious", 0)
-            parts.append(f"VirusTotal: {mal} malicious, {sus} suspicious detections")
-        return "\n".join(parts)
-    except Exception as e:
-        return f"Could not check link: {e}"
+    Returns a safe/unsafe verdict and the threat type if flagged."""
+    gsb_r, vt_r = await asyncio.gather(
+        check_gsb(url), check_vt(url), return_exceptions=True
+    )
+    gsb = gsb_r if isinstance(gsb_r, dict) else None
+    vt = vt_r if isinstance(vt_r, dict) else None
+    if gsb is None and vt is None:
+        return "Could not check the link right now; try again shortly."
+
+    unsafe = (gsb is not None and not gsb["safe"]) or (
+        vt is not None and vt.get("safe") is False
+    )
+    if not unsafe:
+        return "safe — no threats found for this link"
+    threat = ""
+    if gsb is not None and not gsb["safe"] and gsb.get("threat"):
+        t = gsb["threat"].lower()
+        threat = " (phishing)" if "social" in t else f" ({t.replace('_', ' ')})"
+    return f"unsafe — this link is flagged as a scam/malicious site{threat}"
 
 
 @tool

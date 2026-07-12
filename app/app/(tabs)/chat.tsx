@@ -120,6 +120,7 @@ export default function ChatScreen() {
     const assistantMsg: Msg = { id: `a-${Date.now()}`, role: 'assistant', content: '' };
     setMessages((prev) => [...prev, userMsg, assistantMsg]);
     setStreaming(true);
+    let revealTimer: ReturnType<typeof setInterval> | null = null;
 
     try {
       let chatId = activeChatId;
@@ -143,7 +144,24 @@ export default function ChatScreen() {
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      let assembled = '';
+
+      // The server buffers the reply, so tokens land in a burst. Receive into a
+      // target string and reveal it at a steady cadence so it types in smoothly.
+      let target = '';
+      let shown = 0;
+      let streamDone = false;
+      const updateContent = (content: string) =>
+        setMessages((prev) => prev.map((m) => (m.id === assistantMsg.id ? { ...m, content } : m)));
+      revealTimer = setInterval(() => {
+        if (shown < target.length) {
+          const step = Math.max(2, Math.ceil((target.length - shown) / 18));
+          shown = Math.min(target.length, shown + step);
+          updateContent(target.slice(0, shown));
+        } else if (streamDone && revealTimer) {
+          clearInterval(revealTimer);
+          revealTimer = null;
+        }
+      }, 20);
 
       if (reader) {
         while (true) {
@@ -156,21 +174,22 @@ export default function ChatScreen() {
             if (line.startsWith('data: ')) {
               const chunk = line.slice(6).replace(/\r$/, '');
               if (chunk && chunk !== '[DONE]') {
-                assembled += JSON.parse(chunk);
-                setMessages((prev) => [
-                  ...prev.slice(0, -1),
-                  { ...assistantMsg, content: assembled },
-                ]);
+                target += JSON.parse(chunk);
               }
             }
           }
         }
       }
+      streamDone = true;
     } catch {
-      setMessages((prev) => [
-        ...prev.slice(0, -1),
-        { ...assistantMsg, content: 'Something went wrong. Please try again.' },
-      ]);
+      if (revealTimer) clearInterval(revealTimer);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMsg.id
+            ? { ...m, content: 'Something went wrong. Please try again.' }
+            : m,
+        ),
+      );
     } finally {
       setStreaming(false);
     }
@@ -533,10 +552,17 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
     borderRadius: radius.lg,
   },
-  bubbleUser: { alignSelf: 'flex-end', backgroundColor: colors.brand, borderBottomRightRadius: 4 },
+  bubbleUser: {
+    alignSelf: 'flex-end',
+    backgroundColor: colors.brand,
+    borderBottomRightRadius: 4,
+    marginTop: space.md,
+  },
   assistantBlock: {
     alignSelf: 'stretch',
     paddingVertical: space.xs,
+    marginLeft: space.xs,
+    marginRight: space.md,
   },
   inputRow: {
     flexDirection: 'row',

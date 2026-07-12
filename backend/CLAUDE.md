@@ -89,6 +89,13 @@ Mongo via `shared/db.py` (`AsyncMongoClient`); all settings in `shared/config.py
   (the scheduler only fires after the first interval has elapsed).
 - **Neo4j is optional for the batch.** The load is best-effort; the job logs
   `neo4j_error` and finishes fine if the container is down.
+- **RAG embedding model cold-start.** `search_fraud_knowledge` builds the FAISS
+  index on first use, which downloads the `paraphrase-multilingual-MiniLM-L12-v2`
+  sentence-transformer (~470MB) from HuggingFace. To keep it off the request path
+  the app **warms it at startup** (`retrieval.warm()` in the lifespan, best-effort)
+  and the download is **persisted to the `hf-cache` compose volume** (`HF_HOME`), so
+  it survives `docker compose up --build`. First-ever boot still downloads once
+  (watch for `knowledge-base index ready`); every rebuild after reuses the volume.
 - **Geocoding** uses Nominatim with a committed cache at
   `server/graph/data/geocode_cache.json` (1 req/s; caches misses too). A city
   not in the cache hits the network once.
