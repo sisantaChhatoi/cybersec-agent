@@ -171,18 +171,29 @@ export default function HotspotsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top']}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ gap: space.lg, paddingBottom: space.huge }}>
-        <BackHeader title="Fraud hotspots" variant="title" />
+        contentContainerStyle={{
+          gap: space.lg,
+          paddingHorizontal: space.lg,
+          paddingBottom: space.huge,
+        }}>
+        <BackHeader
+          title="Fraud hotspots"
+          variant="title"
+          titleStyle={{ fontSize: 19, lineHeight: 25 }}
+          iconSize={21}
+        />
 
-        <View style={{ paddingHorizontal: space.lg, gap: space.lg }}>
+        <View style={{ gap: space.lg }}>
           <GradientPanel colors={gradients.heroLight}>
-            <AppText variant="heading">Scam networks, mapped</AppText>
-            <AppText variant="body">
+            <AppText variant="heading" style={{ textAlign: 'center', color: '#403F4A' }}>
+              Scam networks, mapped
+            </AppText>
+            <AppText variant="body" style={{ textAlign: 'center' }}>
               Live intelligence from the fraud graph — rings, hotspot cities, and flagged accounts
               built from real incident reports.
             </AppText>
             {generatedAt && (
-              <AppText variant="caption">
+              <AppText variant="caption" style={{ textAlign: 'center' }}>
                 Updated {new Date(generatedAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
               </AppText>
             )}
