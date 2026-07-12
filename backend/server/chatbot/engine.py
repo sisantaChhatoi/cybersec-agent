@@ -1,5 +1,6 @@
 import logging
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from typing import cast
 
 from langchain_core.language_models import BaseChatModel
@@ -21,29 +22,47 @@ logger = logging.getLogger(__name__)
 _SYSTEM_PROMPT = (
     "You are a calm, non-alarmist fraud-safety assistant for an Indian scam-protection "
     "app. Someone messages you about a suspicious call or message.\n\n"
-    "1. CAPTURE FIRST (mandatory): if the user's message contains ANY scam detail — a phone "
-    "number, bank account, UPI id, amount, their city, who the caller claimed to be, or the "
-    "kind of scam — you MUST call save_incident with those fields before replying, and again "
-    "whenever new details appear. This is not optional.\n"
-    "2. GROUND your advice with the search_fraud_knowledge tool. Never invent helpline numbers "
-    "or reporting steps.\n"
-    "3. Reply in the user's language. Default to Hindi or Hinglish (Roman-script Hindi) — users "
-    "are Indian and usually more comfortable that way. Use plain English only when the user "
-    "clearly writes in plain English; when unsure, prefer Hinglish. Mirror the user's script. "
-    "Be brief and clear; don't dump a long checklist every turn.\n"
-    "4. To fill gaps, ask for the key missing details (the number that called, the account/UPI "
-    "they were told to pay, their city) together in ONE natural question. Settle with what you "
-    "get within 2-3 clarifications — never re-ask the same field.\n"
+    "This is a focused fraud-safety chat. If the user only greets you or hasn't described "
+    "anything yet, reply with a short, warm greeting and invite them to tell you about the "
+    "suspicious call or message — do NOT interrogate for specifics yet. Once they actually "
+    "describe a scam, then help and gather details.\n\n"
+    "1. CAPTURE FIRST: the moment the user reveals any scam detail, call save_incident before "
+    "replying, and again as new details surface. Do it silently — never tell the user you are "
+    "saving or recording anything.\n"
+    "2. Never state a helpline number or reporting step you haven't grounded via "
+    "search_fraud_knowledge.\n"
+    "3. Reply in the user's language. If a preferred language is given in their profile below, "
+    "use it; otherwise default to Hindi or Hinglish (Roman-script Hindi). Use plain English only "
+    "when the user clearly writes in plain English; when unsure, prefer Hinglish. Mirror the "
+    "user's script.\n"
+    "4. BE CONCISE: a few short sentences at most. No preamble, no filler, no meta-talk about "
+    "what you are doing. Once a scam is described, ask naturally for the key missing details "
+    "(the number that called, the account/UPI they were told to pay, and their city only if it "
+    "isn't already known) in ONE plain question. Settle with what you get within 2-3 "
+    "clarifications — never re-ask the same field.\n"
     "5. Never ask the user for an OTP, PIN, password, or card number yourself. Reassure them "
     "that hanging up and reporting (1930 / cybercrime.gov.in) is the right move.\n"
-    "6. LINK SAFETY (mandatory): if the user's message contains any URL or link, you MUST call "
-    "check_link_safety with that URL before replying. Read the tool result carefully — "
-    "if it says 'Link verdict: SAFE', tell the user the link is safe and they can open it; "
-    "if it says 'Link verdict: UNSAFE', warn them not to open it and explain the threat. "
-    "Never give a safety verdict before calling the tool, and never contradict what the tool returned."
+    "6. Format replies as plain Markdown only (use blank lines between paragraphs, '-' for "
+    "lists). Never emit HTML tags such as <br>, <b>, or <p>."
 )
 
 _MAX_TOOL_ROUNDS = 5
+
+
+@dataclass(frozen=True)
+class UserContext:
+    languages: str
+    location: str
+
+
+def _profile_block(ctx: UserContext) -> str:
+    return (
+        "\n\nUSER PROFILE (from their saved account — already known, never ask for these):\n"
+        f"- Preferred language(s), primary first: {ctx.languages}. Reply in the primary "
+        "language unless the user writes in another.\n"
+        f"- Location: {ctx.location}. Treat this as their city/region (use it for victim_region "
+        "when saving an incident); never ask them where they are from."
+    )
 
 
 def to_lc_messages(messages: list[Message]) -> list[BaseMessage]:
@@ -68,20 +87,19 @@ class ChatbotEngine:
         history: list[BaseMessage],
         user_message: str,
         tools: list[BaseTool],
+        user_context: UserContext | None = None,
     ) -> AsyncIterator[str]:
         llm = self.llm.bind_tools(tools)
         by_name = {t.name: t for t in tools}
+        system = _SYSTEM_PROMPT + (_profile_block(user_context) if user_context else "")
         messages: list[BaseMessage] = [
-            SystemMessage(_SYSTEM_PROMPT),
+            SystemMessage(system),
             *history,
             HumanMessage(user_message),
         ]
 
         for round_num in range(_MAX_TOOL_ROUNDS):
             gathered: AIMessageChunk | None = None
-            # Buffer text — only yield once we know there are no tool calls.
-            # If the model emits text AND tool calls in the same round, suppressing
-            # the text avoids leaking pre-tool "thinking" to the user.
             text_buffer: list[str] = []
             async for raw in llm.astream(messages):
                 chunk = cast(AIMessageChunk, raw)
@@ -94,7 +112,6 @@ class ChatbotEngine:
             messages.append(gathered)
 
             if not gathered.tool_calls:
-                # Final response — stream everything we buffered
                 for text in text_buffer:
                     yield text
                 return

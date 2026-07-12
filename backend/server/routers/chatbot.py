@@ -1,3 +1,4 @@
+import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -43,7 +44,7 @@ async def send_message(
 
     async def events():
         async for token in service.reply_stream(chat_id, user.user_id, body.message):
-            yield {"data": token}
+            yield {"data": json.dumps(token)}
         yield {"event": "done", "data": "[DONE]"}
 
     return EventSourceResponse(events())

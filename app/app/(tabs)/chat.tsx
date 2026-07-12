@@ -156,7 +156,7 @@ export default function ChatScreen() {
             if (line.startsWith('data: ')) {
               const chunk = line.slice(6).replace(/\r$/, '');
               if (chunk && chunk !== '[DONE]') {
-                assembled += chunk;
+                assembled += JSON.parse(chunk);
                 setMessages((prev) => [
                   ...prev.slice(0, -1),
                   { ...assistantMsg, content: assembled },
@@ -219,7 +219,7 @@ export default function ChatScreen() {
             data={messages}
             keyExtractor={(m) => m.id}
             contentContainerStyle={styles.messageList}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
             renderItem={({ item }) => <MessageBubble msg={item} />}
           />
         )}
@@ -396,9 +396,10 @@ function MessageBubble({ msg }: { msg: Msg }) {
       </View>
     );
   }
+  const content = (msg.content || '…').replace(/<br\s*\/?>/gi, '\n');
   return (
-    <View style={[styles.bubble, styles.bubbleAssistant]}>
-      <Markdown style={mdStyles}>{msg.content || '…'}</Markdown>
+    <View style={styles.assistantBlock}>
+      <Markdown style={mdStyles}>{content}</Markdown>
     </View>
   );
 }
@@ -533,12 +534,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
   },
   bubbleUser: { alignSelf: 'flex-end', backgroundColor: colors.brand, borderBottomRightRadius: 4 },
-  bubbleAssistant: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
-    borderBottomLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
+  assistantBlock: {
+    alignSelf: 'stretch',
+    paddingVertical: space.xs,
   },
   inputRow: {
     flexDirection: 'row',

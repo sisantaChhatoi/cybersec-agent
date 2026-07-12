@@ -2,8 +2,6 @@
 
 import networkx as nx
 
-# 10+ incidents on the same entity is the bar for a coordinated operation
-# rather than an opportunistic one-off.
 HIGH_RISK_INCIDENT_THRESHOLD = 10
 MEDIUM_RISK_INCIDENT_THRESHOLD = 3
 
@@ -31,7 +29,7 @@ def build_fraud_rings(
     rings: list[dict] = []
     for ring_id, members in enumerate(communities):
         if len(members) < 2:
-            continue  # a single isolated entity is not a ring
+            continue
 
         incident_ids: set[str] = set()
         for node in members:
