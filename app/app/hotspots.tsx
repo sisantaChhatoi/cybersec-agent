@@ -172,11 +172,11 @@ export default function HotspotsScreen() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ gap: space.lg, paddingBottom: space.huge }}>
-        <BackHeader title="Fraud hotspots" />
+        <BackHeader title="Fraud hotspots" variant="title" />
 
         <View style={{ paddingHorizontal: space.lg, gap: space.lg }}>
           <GradientPanel colors={gradients.heroLight}>
-            <AppText variant="title">Scam networks, mapped</AppText>
+            <AppText variant="heading">Scam networks, mapped</AppText>
             <AppText variant="body">
               Live intelligence from the fraud graph — rings, hotspot cities, and flagged accounts
               built from real incident reports.
