@@ -1,7 +1,7 @@
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 
-from server.chatbot.engine import ChatbotEngine, to_lc_messages
+from server.chatbot.engine import ChatbotEngine, UserContext, to_lc_messages
 from server.chatbot.tools import build_chat_tools
 from server.models.chat import (
     DEFAULT_TITLE,
@@ -12,6 +12,7 @@ from server.models.chat import (
 )
 from server.repositories.chat_repo import ChatRepository
 from server.repositories.incident_repo import IncidentRepository
+from server.repositories.user_repo import UserRepository
 
 
 class ChatNotFoundError(Exception):
@@ -31,11 +32,13 @@ class ChatbotService:
         self,
         chats: ChatRepository,
         incidents: IncidentRepository,
+        users: UserRepository,
         engine: ChatbotEngine,
         history_limit: int,
     ) -> None:
         self._chats = chats
         self._incidents = incidents
+        self._users = users
         self._engine = engine
         self._history_limit = history_limit
 
@@ -75,11 +78,29 @@ class ChatbotService:
 
         history = to_lc_messages(history_msgs)
         tools = build_chat_tools(self._incidents, session_id=chat_id, user_id=user_id)
+        user_context = await self._user_context(user_id)
         parts: list[str] = []
-        async for token in self._engine.stream_reply(history, text, tools):
+        async for token in self._engine.stream_reply(
+            history, text, tools, user_context
+        ):
             parts.append(token)
             yield token
 
         await self._chats.append_message(
             chat_id, Message(role="agent", message="".join(parts), time=_now())
         )
+
+    async def _user_context(self, user_id: str) -> UserContext | None:
+        user = await self._users.get_by_id(user_id)
+        if user is None:
+            return None
+        languages = ", ".join(
+            lang
+            for lang in (
+                user.languages.primary,
+                user.languages.secondary,
+                user.languages.tertiary,
+            )
+            if lang
+        )
+        return UserContext(languages=languages, location=f"{user.city}, {user.state}")

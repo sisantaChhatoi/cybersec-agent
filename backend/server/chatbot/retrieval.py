@@ -62,6 +62,12 @@ def _store() -> FAISS:
     )
 
 
+def warm() -> None:
+    # Force the embedding model download + index build now (at startup) so the
+    # first chat that hits search_fraud_knowledge doesn't pay for it.
+    _store()
+
+
 def retrieve(query: str, k: int | None = None) -> list[str]:
     """Top-k knowledge-base passages above the relevance floor. Normalized
     embeddings + inner-product index means score is cosine similarity, so a

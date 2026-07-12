@@ -71,9 +71,10 @@ def get_chatbot_engine() -> ChatbotEngine:
 def get_chatbot_service(
     chats: Annotated[ChatRepository, Depends(get_chat_repository)],
     incidents: Annotated[IncidentRepository, Depends(get_incident_repository)],
+    users: Annotated[UserRepository, Depends(get_user_repository)],
     engine: Annotated[ChatbotEngine, Depends(get_chatbot_engine)],
 ) -> ChatbotService:
-    return ChatbotService(chats, incidents, engine, settings.chat_history_limit)
+    return ChatbotService(chats, incidents, users, engine, settings.chat_history_limit)
 
 
 def get_notification_service() -> NotificationService:

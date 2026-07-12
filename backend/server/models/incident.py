@@ -8,10 +8,7 @@ from pydantic import BaseModel, Field
 # A bare bank name ("SBI") has no long digit run; a real account number does.
 _ACCOUNT_NUMBER_PATTERN = re.compile(r"\d{6,}")
 
-# A phone number, a bank account, and a UPI handle are distinct identifier
-# types -- they must never hold the same value. Extraction returning one value
-# for two of them is a misattribution (the model conflated two questions), not
-# a coincidence to record twice.
+
 _DISTINCT_IDENTITY_FIELDS = ("caller_number", "mule_account", "mule_upi")
 
 
@@ -66,10 +63,8 @@ class Incident(BaseModel):
     status: IncidentStatus = IncidentStatus.IN_PROGRESS
 
     def merge_extracted(self, updates: dict) -> None:
-        """Fill fields from an extraction/tool result. Each field is filled
-        once then locked, so a later pass can't overwrite a correct value with
-        a hallucinated one. scam_type is the exception -- it can be refined as
-        the conversation reveals more."""
+        # Fill-once-then-lock: a set field can't be overwritten by a later (maybe
+        # hallucinated) pass. scam_type is exempt -- it may refine.
         for field in EXTRACTABLE_FIELDS:
             value = updates.get(field)
             if not _is_real_value(value):
@@ -91,8 +86,7 @@ class Incident(BaseModel):
                 setattr(self, field, value)
 
     def overwrite(self, updates: dict) -> None:
-        """Set the given fields outright, bypassing the fill-once lock. For
-        deliberate user corrections only ("the account was X, not Y")."""
+        # Bypasses the fill-once lock; deliberate user corrections only.
         for field in EXTRACTABLE_FIELDS:
             value = updates.get(field)
             if not _is_real_value(value):
@@ -106,12 +100,9 @@ class Incident(BaseModel):
                 setattr(self, field, value)
 
     def _resolve_identity_conflict(self, field: str, value: str) -> bool:
-        """If `value` is already held by another identity field, it's a
-        misattribution. mule_account/mule_upi (what the fraud graph links rings
-        through) win over caller_number -- the bug pattern is "asked for the
-        number AND the account in one breath," and the user's answer is far
-        more often the account they were explicitly asked to name. Returns True
-        if `field` should be left unset."""
+        # Same value in two identity fields = misattribution. mule_account/mule_upi
+        # outrank caller_number (user was asked for both at once, usually answers
+        # the account). Returns True if `field` should stay unset.
         value = value.strip()
         priority = {"mule_account": 0, "mule_upi": 0, "caller_number": 1}
         for other in _DISTINCT_IDENTITY_FIELDS:
@@ -129,8 +120,6 @@ class Incident(BaseModel):
         if _ACCOUNT_NUMBER_PATTERN.search(value):
             self.mule_account = value
         elif self.mule_account is None:
-            # Just a bank name so far; keep it aside and let the agent ask for
-            # the actual number.
             self.mule_account_bank_name = value
 
 

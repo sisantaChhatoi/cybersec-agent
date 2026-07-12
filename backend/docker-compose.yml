@@ -7,6 +7,9 @@ services:
     environment:
       MONGODB_URI: mongodb://mongo:27017
       NEO4J_URI: neo4j://neo4j:7687
+      HF_HOME: /root/.cache/huggingface
+    volumes:
+      - hf-cache:/root/.cache/huggingface
     ports:
       - "8000:8000"
     depends_on:
@@ -49,3 +52,4 @@ services:
 volumes:
   mongo-data:
   neo4j-data:
+  hf-cache:
