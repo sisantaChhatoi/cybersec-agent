@@ -185,7 +185,7 @@ function ResultCard({ result }: { result: LinkCheckResult }) {
       )}
 
       {/* Heuristic flags */}
-      {result.flags.length > 0 && (
+      {result.flags?.length > 0 && (
         <Card>
           <View style={{ gap: space.sm }}>
             <View style={styles.sourceRow}>
@@ -205,7 +205,7 @@ function ResultCard({ result }: { result: LinkCheckResult }) {
       )}
 
       {/* Domain Age */}
-      <Card>
+      {result.domain_age && <Card>
         <View style={{ gap: space.sm }}>
           <View style={styles.sourceRow}>
             <Ionicons name="calendar-outline" size={16} color={colors.muted} />
@@ -256,10 +256,10 @@ function ResultCard({ result }: { result: LinkCheckResult }) {
             </AppText>
           )}
         </View>
-      </Card>
+      </Card>}
 
       {/* urlscan.io */}
-      {result.urlscan.scanned && (
+      {result.urlscan?.scanned && (
         <Card>
           <View style={{ gap: space.sm }}>
             <View style={styles.sourceRow}>
