@@ -16,7 +16,18 @@ from server.chatbot.link_safety import (
 )
 from server.deps import get_current_user
 
+from urllib.parse import urlparse
+
 router = APIRouter(prefix="/link-check", tags=["link-check"])
+
+
+def _domain_changed(original: str, resolved: str) -> bool:
+    """True only when the registrable domain actually changed (not just www. or trailing slash)."""
+    def bare(url: str) -> str:
+        host = (urlparse(url).hostname or "").lower().removeprefix("www.")
+        parts = host.split(".")
+        return ".".join(parts[-2:]) if len(parts) >= 2 else host
+    return bare(original) != bare(resolved)
 
 
 @router.post("")
@@ -86,7 +97,7 @@ async def check_link(
 
     return {
         "url": url,
-        "resolved_url": resolved if resolved != url else None,
+        "resolved_url": resolved if _domain_changed(url, resolved) else None,
         "verdict": verdict,
         "risk_score": combined_score,
         "risk_level": risk_level,
