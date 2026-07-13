@@ -287,6 +287,32 @@ function ResultCard({ result }: { result: LinkCheckResult }) {
         </Card>
       )}
 
+      {/* ML Classifier */}
+      {result.ml_classifier?.available && result.ml_classifier.label && (
+        <Card>
+          <View style={{ gap: space.sm }}>
+            <View style={styles.sourceRow}>
+              <Ionicons name="hardware-chip-outline" size={16} color={colors.muted} />
+              <AppText variant="bodyStrong">ML classifier</AppText>
+              <View style={[styles.chip, {
+                backgroundColor: result.ml_classifier.label === 'benign'
+                  ? colors.successTint
+                  : colors.dangerTint,
+              }]}>
+                <AppText variant="label" color={
+                  result.ml_classifier.label === 'benign' ? colors.success : colors.danger
+                }>
+                  {result.ml_classifier.label}
+                </AppText>
+              </View>
+            </View>
+            <AppText variant="caption" color={colors.muted}>
+              Confidence: {((result.ml_classifier.confidence ?? 0) * 100).toFixed(0)}%
+            </AppText>
+          </View>
+        </Card>
+      )}
+
       {/* Page Analysis */}
       {result.page_analysis?.available && (
         <Card>

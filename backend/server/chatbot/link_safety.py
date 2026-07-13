@@ -4,11 +4,29 @@ import asyncio
 import base64
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
 
 from shared.config import settings
+
+# ML classifier — loaded once at import time, None if model file missing
+_ML_MODEL: dict | None = None
+_ML_MODEL_PATH = Path(__file__).resolve().parents[2] / "data" / "url_classifier.joblib"
+
+def _load_ml_model() -> dict | None:
+    global _ML_MODEL
+    if _ML_MODEL is not None:
+        return _ML_MODEL
+    if not _ML_MODEL_PATH.exists():
+        return None
+    try:
+        import joblib
+        _ML_MODEL = joblib.load(_ML_MODEL_PATH)
+        return _ML_MODEL
+    except Exception:
+        return None
 
 _GSB_URL = "https://safebrowsing.googleapis.com/v4/threatMatches:find"
 _VT_URL = "https://www.virustotal.com/api/v3/urls"
@@ -280,6 +298,55 @@ async def check_page_content(url: str) -> dict:
             return {"available": True, "flags": flags, "score": min(score, 60)}
     except Exception:
         return {"available": False, "flags": [], "score": 0}
+
+
+def check_ml_classifier(url: str) -> dict:
+    """Run the trained URL classifier. Returns label + probability."""
+    model_data = _load_ml_model()
+    if model_data is None:
+        return {"available": False, "label": None, "confidence": None}
+    try:
+        import numpy as np
+        clf = model_data["model"]
+        le = model_data["label_encoder"]
+        features = np.array([_extract_ml_features(url)], dtype=np.float32)
+        label_idx = clf.predict(features)[0]
+        proba = clf.predict_proba(features)[0]
+        label = le.inverse_transform([label_idx])[0]
+        confidence = float(proba[label_idx])
+        return {"available": True, "label": label, "confidence": round(confidence, 3)}
+    except Exception:
+        return {"available": False, "label": None, "confidence": None}
+
+
+def _extract_ml_features(url: str) -> list[float]:
+    try:
+        if not url.startswith("http"):
+            url = "http://" + url
+        parsed = urlparse(url)
+        host = (parsed.hostname or "").lower()
+        path = (parsed.path or "").lower()
+        parts = host.split(".")
+        domain_label = parts[-2] if len(parts) >= 2 else host
+        tld = f".{parts[-1]}" if parts else ""
+        combined = host + path
+    except Exception:
+        return [0.0] * 12
+
+    return [
+        float(len(url)),
+        float(host.count(".")),
+        float(domain_label.count("-")),
+        float(sum(c.isdigit() for c in domain_label)),
+        float(tld in _SUSPICIOUS_TLDS),
+        float(any(p.startswith("xn--") for p in parts)),
+        float("@" in url),
+        float(bool(re.match(r"^\d{1,3}(\.\d{1,3}){3}$", host))),
+        float(host.removeprefix("www.") in _SHORTENERS),
+        float(any(kw in combined for kw in _SCAM_KEYWORDS)),
+        float(len(parts) > 3),
+        float(len(path)),
+    ]
 
 
 async def check_gsb(url: str) -> dict:

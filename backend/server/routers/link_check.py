@@ -8,6 +8,7 @@ from server.chatbot.link_safety import (
     analyze_url,
     check_domain_age,
     check_gsb,
+    check_ml_classifier,
     check_page_content,
     check_urlscan,
     check_vt,
@@ -29,6 +30,7 @@ async def check_link(
 
     resolved = await unshorten(url)
     heuristics = analyze_url(resolved)
+    ml = check_ml_classifier(resolved)
 
     gsb, vt, domain_age, urlscan, page = await asyncio.gather(
         check_gsb(resolved),
@@ -73,6 +75,11 @@ async def check_link(
 
     score += page.get("score", 0)
 
+    # ML classifier contribution
+    if ml.get("available") and ml.get("label") in ("phishing", "malware"):
+        confidence = ml.get("confidence") or 0
+        score += int(confidence * 30)
+
     combined_score = min(score, 100)
     risk_level = "high" if combined_score >= 60 else "suspicious" if combined_score >= 25 else "low"
     verdict = "unsafe" if risk_level == "high" else "suspicious" if risk_level == "suspicious" else "safe"
@@ -86,6 +93,7 @@ async def check_link(
         "flags": heuristics["flags"],
         "domain_age": domain_age,
         "urlscan": urlscan,
+        "ml_classifier": ml,
         "page_analysis": page,
         "google_safe_browsing": gsb,
         "virustotal": vt,
