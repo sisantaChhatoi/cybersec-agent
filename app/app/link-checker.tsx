@@ -160,8 +160,8 @@ function ResultCard({ result }: { result: LinkCheckResult }) {
             {result.risk_level === 'low'
               ? 'No significant risk signals detected'
               : result.risk_level === 'suspicious'
-              ? 'Some suspicious patterns found — proceed with caution'
-              : 'High-risk signals — do not open this link'}
+              ? 'Suspicious patterns detected — proceed with caution'
+              : 'High-risk — do not open this link'}
           </AppText>
         </View>
       </Card>
@@ -257,35 +257,6 @@ function ResultCard({ result }: { result: LinkCheckResult }) {
           )}
         </View>
       </Card>}
-
-      {/* urlscan.io */}
-      {result.urlscan?.scanned && (
-        <Card>
-          <View style={{ gap: space.sm }}>
-            <View style={styles.sourceRow}>
-              <Ionicons name="scan-outline" size={16} color={colors.muted} />
-              <AppText variant="bodyStrong">urlscan.io</AppText>
-              {result.urlscan.note === 'timeout' ? (
-                <View style={[styles.chip, { backgroundColor: colors.amberTint }]}>
-                  <AppText variant="label" color={colors.amber}>Timeout</AppText>
-                </View>
-              ) : result.urlscan.malicious !== null ? (
-                <StatusChip safe={!result.urlscan.malicious} />
-              ) : null}
-            </View>
-            {result.urlscan.score !== null && (
-              <AppText variant="caption" color={colors.muted}>
-                Threat score: {result.urlscan.score}/100
-              </AppText>
-            )}
-            {result.urlscan.brands.length > 0 && (
-              <AppText variant="caption" color={colors.danger}>
-                Brand impersonation detected: {result.urlscan.brands.join(', ')}
-              </AppText>
-            )}
-          </View>
-        </Card>
-      )}
 
       {/* ML Classifier */}
       {result.ml_classifier?.available && result.ml_classifier.label && (
