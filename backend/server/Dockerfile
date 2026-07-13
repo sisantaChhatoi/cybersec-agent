@@ -13,6 +13,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 COPY shared/ ./shared/
 COPY server/ ./server/
+COPY data/ ./data/
 
 EXPOSE 8000
 
