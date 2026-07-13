@@ -20,6 +20,8 @@ call is still happening.
   a "scam" label.
 - 💬 **Chat risk checks** — describe anything suspicious and get a risk assessment,
   backed by graph intelligence over related signals.
+- 🔗 **Link safety checker** — 4-tier URL analysis: heuristics, domain age (RDAP),
+  page content analysis, ML classifier, Google Safe Browsing, and VirusTotal.
 - 🗺️ **Geospatial intelligence** — cybercrime hotspots across India.
 - 🔄 **Evolving detection** — the system tracks the latest fraud patterns over time.
 
@@ -74,6 +76,28 @@ flowchart TD
 - ⚙️ **API:** FastAPI + MongoDB (`pymongo` async).
 - 📨 **Push:** Expo Push API → FCM.
 - 🐳 **Deploy:** Docker Compose (server + worker + mongo); LiveKit is Cloud-hosted.
+
+## 🔗 Link Safety Checker
+
+`POST /link-check` — 4-tier URL analysis returning a 0–100 risk score and verdict.
+
+| Tier | What it does | Implementation |
+|------|-------------|----------------|
+| 1 | Heuristics: punycode, raw IP, typosquatting, suspicious TLD, scam keywords, shortener detection | `chatbot/link_safety.py · analyze_url()` |
+| 2 | Domain age via RDAP (no API key needed) | `chatbot/link_safety.py · check_domain_age()` |
+| 3 | LLM reasoning — chat agent receives all signals and reasons in its reply | Handled by `ChatbotEngine` + `check_link_safety` tool in `chatbot/tools.py` |
+| 4 | Page content analysis (BeautifulSoup) + ML classifier (LogisticRegression trained on 650K URLs) | `chatbot/link_safety.py · check_page_content()`, `check_ml_classifier()` |
+
+External checks: **Google Safe Browsing v4** and **VirusTotal** (both free tier).
+
+**ML model:** `backend/data/url_classifier.joblib` — LogisticRegression with TF-IDF character n-grams (2–4) + 12 handcrafted URL features. Trained on `malicious_phish.csv` (651K URLs, 4 classes). Retrain:
+
+```bash
+cd backend
+python train_url_classifier.py /path/to/malicious_phish.csv
+```
+
+ML predictions are only surfaced to the user when confidence ≥ 80%.
 
 ## 🚀 Running locally
 

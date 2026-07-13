@@ -307,9 +307,19 @@ def check_ml_classifier(url: str) -> dict:
         return {"available": False, "label": None, "confidence": None}
     try:
         import numpy as np
+        from scipy.sparse import csr_matrix, hstack
         clf = model_data["model"]
         le = model_data["label_encoder"]
-        features = np.array([_extract_ml_features(url)], dtype=np.float32)
+        tfidf = model_data.get("tfidf")
+
+        hand = np.array([_extract_ml_features(url)], dtype=np.float32)
+        if tfidf is not None:
+            norm = url if url.startswith("http") else "http://" + url
+            X_tfidf = tfidf.transform([norm])
+            features = hstack([csr_matrix(hand), X_tfidf])
+        else:
+            features = hand
+
         label_idx = clf.predict(features)[0]
         proba = clf.predict_proba(features)[0]
         label = le.inverse_transform([label_idx])[0]

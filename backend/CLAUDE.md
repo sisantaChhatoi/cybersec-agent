@@ -57,6 +57,26 @@ Mongo via `shared/db.py` (`AsyncMongoClient`); all settings in `shared/config.py
   `routers/link_check.py`) to avoid a circular import: `deps.py` → `tools.py` →
   `link_check.py` → `deps.py`. Both the `/link-check` router and the chat tool
   import `check_gsb`/`check_vt` from there.
+- **Link checker tiers** (`POST /link-check` → `routers/link_check.py`):
+  - **Tier 1 heuristics** (`analyze_url`): punycode, raw IP, `@` in URL, suspicious
+    TLD, typosquatting (Levenshtein ≤2 vs brand list), scam keywords, shortener
+    detection, excessive subdomains/hyphens. Pure Python, no network.
+  - **Tier 2 domain age** (`check_domain_age`): RDAP lookup, no API key needed.
+    Age <30d adds +25 to score; <90d adds +10.
+  - **Tier 3 LLM reasoning**: already handled — the chat tool passes all signals to
+    the agent, which reasons about them in its reply. No separate implementation.
+  - **Tier 4 page + ML** (`check_page_content`, `check_ml_classifier`): BeautifulSoup
+    scans for password fields, sensitive inputs, brand impersonation in title, external
+    form action. ML classifier is LogisticRegression trained on 651K URLs
+    (`malicious_phish.csv`, 4 classes) with TF-IDF char n-grams (2–4) +
+    12 handcrafted URL features. Model at `data/url_classifier.joblib`; retrain
+    via `python train_url_classifier.py`. ML only contributes to score when
+    confidence ≥ 80%.
+  - **External**: Google Safe Browsing v4 (+40 if flagged), VirusTotal (+40 malicious /
+    +20 suspicious). urlscan.io was trialled but removed — free tier timeouts.
+  - **Scoring**: 0–100; thresholds: suspicious ≥20, high ≥60.
+  - **Docker note**: `Dockerfile` copies `data/` so the model is available in the
+    container. scikit-learn and joblib are in `pyproject.toml` (server group).
 - Prompt (`engine.py`): capture-first, check links first, ground via the search tool,
   prefer Hindi/Hinglish, settle in 2–3 clarifications, never ask for OTP/PIN.
 - **Streaming loop** buffers text per round and only yields it when there are no tool
