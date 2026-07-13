@@ -3,7 +3,7 @@ from typing import Literal
 
 from langchain_core.tools import BaseTool, tool
 
-from server.chatbot.link_safety import check_gsb, check_vt
+from server.chatbot.link_safety import analyze_url, check_gsb, check_vt, unshorten
 from server.chatbot.retrieval import retrieve
 from server.models.incident import Incident
 from server.repositories.incident_repo import IncidentRepository
@@ -21,25 +21,42 @@ _REPORT_FIELDS = [
 async def check_link_safety(url: str) -> str:
     """Check whether a URL shared by the user is safe or malicious.
     Call this whenever the user pastes or mentions any link/URL.
-    Returns a safe/unsafe verdict and the threat type if flagged."""
+    Returns a risk verdict, score, and specific warning flags."""
+    resolved = await unshorten(url)
+    heuristics = analyze_url(resolved)
+
     gsb_r, vt_r = await asyncio.gather(
-        check_gsb(url), check_vt(url), return_exceptions=True
+        check_gsb(resolved), check_vt(resolved), return_exceptions=True
     )
     gsb = gsb_r if isinstance(gsb_r, dict) else None
     vt = vt_r if isinstance(vt_r, dict) else None
-    if gsb is None and vt is None:
-        return "Could not check the link right now; try again shortly."
 
-    unsafe = (gsb is not None and not gsb["safe"]) or (
-        vt is not None and vt.get("safe") is False
-    )
-    if not unsafe:
-        return "safe — no threats found for this link"
-    threat = ""
-    if gsb is not None and not gsb["safe"] and gsb.get("threat"):
-        t = gsb["threat"].lower()
-        threat = " (phishing)" if "social" in t else f" ({t.replace('_', ' ')})"
-    return f"unsafe — this link is flagged as a scam/malicious site{threat}"
+    rep_score = 0
+    rep_flags: list[str] = []
+    if gsb is not None and not gsb["safe"]:
+        rep_score += 40
+        threat = gsb.get("threat", "")
+        label = "phishing" if "social" in threat.lower() else threat.replace("_", " ").lower()
+        rep_flags.append(f"Google Safe Browsing: {label}")
+    if vt is not None and isinstance(vt.get("malicious"), int) and vt["malicious"] > 0:
+        rep_score += 40
+        rep_flags.append(f"VirusTotal: {vt['malicious']} engines flagged it malicious")
+    elif vt is not None and isinstance(vt.get("suspicious"), int) and vt["suspicious"] > 0:
+        rep_score += 20
+        rep_flags.append(f"VirusTotal: {vt['suspicious']} engines flagged it suspicious")
+
+    combined = min(heuristics["score"] + rep_score, 100)
+    risk_level = "high" if combined >= 60 else "suspicious" if combined >= 25 else "low"
+
+    all_flags = rep_flags + heuristics["flags"]
+    unshortened = f" (resolved from shortener to: {resolved})" if resolved != url else ""
+    flags_str = "; ".join(all_flags) if all_flags else "none"
+
+    if risk_level == "high":
+        return f"Link verdict: UNSAFE (risk score {combined}/100){unshortened}. Warning signals: {flags_str}."
+    if risk_level == "suspicious":
+        return f"Link verdict: SUSPICIOUS (risk score {combined}/100){unshortened}. Signals: {flags_str}."
+    return f"Link verdict: SAFE (risk score {combined}/100){unshortened}. No significant threats detected."
 
 
 @tool

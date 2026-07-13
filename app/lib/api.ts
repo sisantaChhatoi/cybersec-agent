@@ -90,7 +90,11 @@ export type CallStats = {
 
 export type LinkCheckResult = {
   url: string;
-  verdict: 'safe' | 'unsafe';
+  resolved_url: string | null;
+  verdict: 'safe' | 'suspicious' | 'unsafe';
+  risk_score: number;
+  risk_level: 'low' | 'suspicious' | 'high';
+  flags: string[];
   google_safe_browsing: { safe: boolean; threat: string | null };
   virustotal: { safe: boolean | null; malicious: number; suspicious: number; note: string | null };
 };
