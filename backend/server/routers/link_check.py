@@ -76,7 +76,8 @@ async def check_link(
 
     if ml.get("available") and ml.get("label") in ("phishing", "malware"):
         confidence = ml.get("confidence") or 0
-        score += int(confidence * 30)
+        if confidence >= 0.80:
+            score += int(confidence * 30)
 
     combined_score = min(score, 100)
     risk_level = "high" if combined_score >= 60 else "suspicious" if combined_score >= 20 else "low"

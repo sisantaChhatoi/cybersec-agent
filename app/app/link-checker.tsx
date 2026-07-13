@@ -259,7 +259,7 @@ function ResultCard({ result }: { result: LinkCheckResult }) {
       </Card>}
 
       {/* ML Classifier */}
-      {result.ml_classifier?.available && result.ml_classifier.label && (
+      {result.ml_classifier?.available && result.ml_classifier.label && (result.ml_classifier.confidence ?? 0) >= 0.80 && (
         <Card>
           <View style={{ gap: space.sm }}>
             <View style={styles.sourceRow}>
