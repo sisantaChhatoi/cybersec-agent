@@ -15,6 +15,7 @@ from shared.config import settings
 _ML_MODEL: dict | None = None
 _ML_MODEL_PATH = Path(__file__).resolve().parents[2] / "data" / "url_classifier.joblib"
 
+
 def _load_ml_model() -> dict | None:
     global _ML_MODEL
     if _ML_MODEL is not None:
@@ -23,38 +24,111 @@ def _load_ml_model() -> dict | None:
         return None
     try:
         import joblib
+
         _ML_MODEL = joblib.load(_ML_MODEL_PATH)
         return _ML_MODEL
     except Exception:
         return None
 
+
 _GSB_URL = "https://safebrowsing.googleapis.com/v4/threatMatches:find"
 _VT_URL = "https://www.virustotal.com/api/v3/urls"
 
 _SUSPICIOUS_TLDS = {
-    ".xyz", ".top", ".tk", ".buzz", ".click", ".ml", ".ga", ".cf",
-    ".gq", ".pw", ".icu", ".live", ".online", ".work", ".loan", ".win",
-    ".bid", ".trade", ".racing", ".date", ".download", ".info",
+    ".xyz",
+    ".top",
+    ".tk",
+    ".buzz",
+    ".click",
+    ".ml",
+    ".ga",
+    ".cf",
+    ".gq",
+    ".pw",
+    ".icu",
+    ".live",
+    ".online",
+    ".work",
+    ".loan",
+    ".win",
+    ".bid",
+    ".trade",
+    ".racing",
+    ".date",
+    ".download",
+    ".info",
 }
 
 _SHORTENERS = {
-    "bit.ly", "tinyurl.com", "t.co", "goo.gl", "ow.ly", "buff.ly",
-    "tiny.cc", "is.gd", "rb.gy", "cutt.ly", "short.io", "clck.ru",
-    "shorturl.at", "urlshrt.com", "tr.im",
+    "bit.ly",
+    "tinyurl.com",
+    "t.co",
+    "goo.gl",
+    "ow.ly",
+    "buff.ly",
+    "tiny.cc",
+    "is.gd",
+    "rb.gy",
+    "cutt.ly",
+    "short.io",
+    "clck.ru",
+    "shorturl.at",
+    "urlshrt.com",
+    "tr.im",
 }
 
 _BRANDS = [
-    "hdfc", "sbi", "icici", "axis", "kotak", "paytm", "phonepe",
-    "gpay", "googlepay", "paypal", "amazon", "flipkart", "irctc",
-    "uidai", "aadhar", "aadhaar", "epfo", "incometax", "nsdl",
-    "facebook", "instagram", "whatsapp", "netflix", "apple",
+    "hdfc",
+    "sbi",
+    "icici",
+    "axis",
+    "kotak",
+    "paytm",
+    "phonepe",
+    "gpay",
+    "googlepay",
+    "paypal",
+    "amazon",
+    "flipkart",
+    "irctc",
+    "uidai",
+    "aadhar",
+    "aadhaar",
+    "epfo",
+    "incometax",
+    "nsdl",
+    "facebook",
+    "instagram",
+    "whatsapp",
+    "netflix",
+    "apple",
 ]
 
 _SCAM_KEYWORDS = {
-    "login", "verify", "kyc", "otp", "refund", "prize", "reward",
-    "secure", "update", "confirm", "account", "bank", "wallet",
-    "winner", "claim", "gift", "lucky", "urgent", "alert", "suspend",
-    "blocked", "freeze", "recover", "redeem",
+    "login",
+    "verify",
+    "kyc",
+    "otp",
+    "refund",
+    "prize",
+    "reward",
+    "secure",
+    "update",
+    "confirm",
+    "account",
+    "bank",
+    "wallet",
+    "winner",
+    "claim",
+    "gift",
+    "lucky",
+    "urgent",
+    "alert",
+    "suspend",
+    "blocked",
+    "freeze",
+    "recover",
+    "redeem",
 }
 
 _STANDARD_PORTS = {80, 443, 8080, 8443}
@@ -75,7 +149,9 @@ def _levenshtein(a: str, b: str) -> int:
 async def unshorten(url: str) -> str:
     """Follow redirects and return the final destination URL."""
     try:
-        async with httpx.AsyncClient(timeout=5, follow_redirects=True, max_redirects=8) as client:
+        async with httpx.AsyncClient(
+            timeout=5, follow_redirects=True, max_redirects=8
+        ) as client:
             r = await client.head(url)
             return str(r.url)
     except Exception:
@@ -138,10 +214,16 @@ def analyze_url(url: str) -> dict:
         score += 5
 
     # Typosquatting — edit-distance ≤ 2 to a known brand
-    domain_label = parts[0] if len(parts) == 1 else parts[-2] if len(parts) >= 2 else host
+    domain_label = (
+        parts[0] if len(parts) == 1 else parts[-2] if len(parts) >= 2 else host
+    )
     domain_label = domain_label.removeprefix("www")
     for brand in _BRANDS:
-        if domain_label != brand and len(domain_label) >= 4 and _levenshtein(domain_label, brand) <= 2:
+        if (
+            domain_label != brand
+            and len(domain_label) >= 4
+            and _levenshtein(domain_label, brand) <= 2
+        ):
             flags.append(f"domain resembles '{brand}' (possible typosquat)")
             score += 20
             break
@@ -169,8 +251,16 @@ def analyze_url(url: str) -> dict:
 
 
 _TWO_LEVEL_TLDS = {
-    "co.uk", "co.in", "co.jp", "co.nz", "co.za", "co.id",
-    "com.au", "com.br", "net.in", "org.in",
+    "co.uk",
+    "co.in",
+    "co.jp",
+    "co.nz",
+    "co.za",
+    "co.id",
+    "com.au",
+    "com.br",
+    "net.in",
+    "org.in",
 }
 
 
@@ -179,6 +269,15 @@ def _registrable_domain(host: str) -> str:
     if len(parts) >= 3 and ".".join(parts[-2:]) in _TWO_LEVEL_TLDS:
         return ".".join(parts[-3:])
     return ".".join(parts[-2:]) if len(parts) >= 2 else host
+
+
+def domain_changed(original: str, resolved: str) -> bool:
+    def bare(url: str) -> str:
+        return _registrable_domain(
+            (urlparse(url).hostname or "").lower().removeprefix("www.")
+        )
+
+    return bare(original) != bare(resolved)
 
 
 async def check_domain_age(url: str) -> dict:
@@ -192,7 +291,11 @@ async def check_domain_age(url: str) -> dict:
                 return {"age_days": None, "created": None, "domain": domain}
             events = r.json().get("events", [])
             created_str = next(
-                (e["eventDate"] for e in events if e.get("eventAction") == "registration"),
+                (
+                    e["eventDate"]
+                    for e in events
+                    if e.get("eventAction") == "registration"
+                ),
                 None,
             )
             if not created_str:
@@ -211,7 +314,13 @@ async def check_domain_age(url: str) -> dict:
 async def check_urlscan(url: str) -> dict:
     """Submit URL to urlscan.io and poll for verdict. Requires URLSCAN_API_KEY."""
     if not settings.urlscan_api_key:
-        return {"scanned": False, "malicious": None, "score": None, "brands": [], "note": "no key"}
+        return {
+            "scanned": False,
+            "malicious": None,
+            "score": None,
+            "brands": [],
+            "note": "no key",
+        }
     headers = {"API-Key": settings.urlscan_api_key, "Content-Type": "application/json"}
     try:
         async with httpx.AsyncClient(timeout=12) as client:
@@ -221,10 +330,22 @@ async def check_urlscan(url: str) -> dict:
                 json={"url": url, "visibility": "unlisted"},
             )
             if r.status_code not in (200, 201):
-                return {"scanned": False, "malicious": None, "score": None, "brands": [], "note": "submit failed"}
+                return {
+                    "scanned": False,
+                    "malicious": None,
+                    "score": None,
+                    "brands": [],
+                    "note": "submit failed",
+                }
             uuid = r.json().get("uuid")
             if not uuid:
-                return {"scanned": False, "malicious": None, "score": None, "brands": [], "note": "no uuid"}
+                return {
+                    "scanned": False,
+                    "malicious": None,
+                    "score": None,
+                    "brands": [],
+                    "note": "no uuid",
+                }
 
             result_url = f"https://urlscan.io/api/v1/result/{uuid}/"
             for _ in range(5):
@@ -239,9 +360,21 @@ async def check_urlscan(url: str) -> dict:
                         "brands": v.get("brands", []),
                         "note": None,
                     }
-            return {"scanned": True, "malicious": None, "score": None, "brands": [], "note": "timeout"}
+            return {
+                "scanned": True,
+                "malicious": None,
+                "score": None,
+                "brands": [],
+                "note": "timeout",
+            }
     except Exception:
-        return {"scanned": False, "malicious": None, "score": None, "brands": [], "note": "error"}
+        return {
+            "scanned": False,
+            "malicious": None,
+            "score": None,
+            "brands": [],
+            "note": "error",
+        }
 
 
 async def check_page_content(url: str) -> dict:
@@ -251,7 +384,9 @@ async def check_page_content(url: str) -> dict:
             timeout=10, follow_redirects=True, headers={"User-Agent": "Mozilla/5.0"}
         ) as client:
             r = await client.get(url)
-            if r.status_code != 200 or "text/html" not in r.headers.get("content-type", ""):
+            if r.status_code != 200 or "text/html" not in r.headers.get(
+                "content-type", ""
+            ):
                 return {"available": False, "flags": [], "score": 0}
 
             from bs4 import BeautifulSoup
@@ -261,39 +396,62 @@ async def check_page_content(url: str) -> dict:
             score = 0
             host = (urlparse(url).hostname or "").lower()
 
-            # Password / login form
+            # Brand impersonation — brand name in page title but domain doesn't match
+            title = str(soup.title.string or "").lower() if soup.title else ""
+            impersonated = next(
+                (b for b in _BRANDS if b in title and b not in host), None
+            )
+            if impersonated:
+                flags.append(
+                    f"page claims to be '{impersonated}' but domain doesn't match"
+                )
+                score += 25
+
+            # Form submitting to a different domain
+            exfil_host = None
+            for form in soup.find_all("form"):
+                action = str(form.get("action") or "")
+                if action.startswith("http"):
+                    action_host = (urlparse(action).hostname or "").lower()
+                    if action_host and action_host != host:
+                        exfil_host = action_host
+                        flags.append(
+                            f"form submits data to external domain: {exfil_host}"
+                        )
+                        score += 20
+                        break
+
+            # Credential fields are only evidence of harvesting when the page is also
+            # impersonating a brand or posting elsewhere — every real bank login page
+            # has a password box, and scoring that alone flags the genuine sites.
+            deceptive = impersonated is not None or exfil_host is not None
+            if not deceptive:
+                return {"available": True, "flags": flags, "score": min(score, 60)}
+
             if soup.find("input", {"type": "password"}):
                 flags.append("login form detected (asks for password)")
                 score += 25
 
-            # Sensitive input fields — OTP, PIN, card, Aadhaar, PAN
-            _sensitive = {"otp", "pin", "cvv", "card", "account", "aadhar", "aadhaar", "pan"}
+            _sensitive = {
+                "otp",
+                "pin",
+                "cvv",
+                "card",
+                "account",
+                "aadhar",
+                "aadhaar",
+                "pan",
+            }
             for inp in soup.find_all("input"):
                 val = " ".join(
-                    filter(None, [inp.get("name"), inp.get("id"), inp.get("placeholder")])
+                    str(inp.get(attr) or "") for attr in ("name", "id", "placeholder")
                 ).lower()
                 if any(s in val for s in _sensitive):
-                    flags.append(f"sensitive input field: {val.split()[0] if val else 'unknown'}")
+                    flags.append(
+                        f"sensitive input field: {val.split()[0] if val.split() else 'unknown'}"
+                    )
                     score += 20
                     break
-
-            # Brand impersonation — brand name in page title but domain doesn't match
-            title = (soup.title.string if soup.title else "").lower()
-            for brand in _BRANDS:
-                if brand in title and brand not in host:
-                    flags.append(f"page claims to be '{brand}' but domain doesn't match")
-                    score += 25
-                    break
-
-            # Form submitting to a different domain
-            for form in soup.find_all("form"):
-                action = form.get("action", "")
-                if action.startswith("http"):
-                    action_host = (urlparse(action).hostname or "").lower()
-                    if action_host and action_host != host:
-                        flags.append(f"form submits data to external domain: {action_host}")
-                        score += 20
-                        break
 
             return {"available": True, "flags": flags, "score": min(score, 60)}
     except Exception:
@@ -302,12 +460,15 @@ async def check_page_content(url: str) -> dict:
 
 def check_ml_classifier(url: str) -> dict:
     """Run the trained URL classifier. Returns label + probability."""
+    if not settings.ml_url_classifier_enabled:
+        return {"available": False, "label": None, "confidence": None}
     model_data = _load_ml_model()
     if model_data is None:
         return {"available": False, "label": None, "confidence": None}
     try:
         import numpy as np
         from scipy.sparse import csr_matrix, hstack
+
         clf = model_data["model"]
         le = model_data["label_encoder"]
         tfidf = model_data.get("tfidf")
@@ -364,7 +525,9 @@ async def check_gsb(url: str) -> dict:
         "client": {"clientId": "digital-arrest-shield", "clientVersion": "1.0"},
         "threatInfo": {
             "threatTypes": [
-                "MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE",
+                "MALWARE",
+                "SOCIAL_ENGINEERING",
+                "UNWANTED_SOFTWARE",
                 "POTENTIALLY_HARMFUL_APPLICATION",
             ],
             "platformTypes": ["ANY_PLATFORM"],

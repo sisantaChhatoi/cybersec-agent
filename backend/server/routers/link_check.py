@@ -1,7 +1,6 @@
 """Link safety checker — GSB + VirusTotal + Tier-1 heuristics + Tier-2 domain age + Tier-4 page/ML."""
 
 import asyncio
-from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends
 
@@ -12,19 +11,12 @@ from server.chatbot.link_safety import (
     check_ml_classifier,
     check_page_content,
     check_vt,
+    domain_changed,
     unshorten,
 )
 from server.deps import get_current_user
 
 router = APIRouter(prefix="/link-check", tags=["link-check"])
-
-
-def _domain_changed(original: str, resolved: str) -> bool:
-    def bare(url: str) -> str:
-        host = (urlparse(url).hostname or "").lower().removeprefix("www.")
-        parts = host.split(".")
-        return ".".join(parts[-2:]) if len(parts) >= 2 else host
-    return bare(original) != bare(resolved)
 
 
 @router.post("")
@@ -40,21 +32,29 @@ async def check_link(
     heuristics = analyze_url(resolved)
     ml = check_ml_classifier(resolved)
 
-    gsb, vt, domain_age, page = await asyncio.gather(
+    gsb_r, vt_r, age_r, page_r = await asyncio.gather(
         check_gsb(resolved),
         check_vt(resolved),
         check_domain_age(resolved),
         check_page_content(resolved),
         return_exceptions=True,
     )
-    if isinstance(gsb, Exception):
-        gsb = {"safe": True, "threat": None}
-    if isinstance(vt, Exception):
-        vt = {"safe": None, "malicious": 0, "suspicious": 0, "note": "unavailable"}
-    if isinstance(domain_age, Exception):
-        domain_age = {"age_days": None, "created": None, "domain": ""}
-    if isinstance(page, Exception):
-        page = {"available": False, "flags": [], "score": 0}
+    gsb: dict = gsb_r if isinstance(gsb_r, dict) else {"safe": True, "threat": None}
+    vt: dict = (
+        vt_r
+        if isinstance(vt_r, dict)
+        else {"safe": None, "malicious": 0, "suspicious": 0, "note": "unavailable"}
+    )
+    domain_age: dict = (
+        age_r
+        if isinstance(age_r, dict)
+        else {"age_days": None, "created": None, "domain": ""}
+    )
+    page: dict = (
+        page_r
+        if isinstance(page_r, dict)
+        else {"available": False, "flags": [], "score": 0}
+    )
 
     score = heuristics["score"]
 
@@ -80,12 +80,24 @@ async def check_link(
             score += int(confidence * 30)
 
     combined_score = min(score, 100)
-    risk_level = "high" if combined_score >= 60 else "suspicious" if combined_score >= 20 else "low"
-    verdict = "unsafe" if risk_level == "high" else "suspicious" if risk_level == "suspicious" else "safe"
+    risk_level = (
+        "high"
+        if combined_score >= 60
+        else "suspicious"
+        if combined_score >= 20
+        else "low"
+    )
+    verdict = (
+        "unsafe"
+        if risk_level == "high"
+        else "suspicious"
+        if risk_level == "suspicious"
+        else "safe"
+    )
 
     return {
         "url": url,
-        "resolved_url": resolved if _domain_changed(url, resolved) else None,
+        "resolved_url": resolved if domain_changed(url, resolved) else None,
         "verdict": verdict,
         "risk_score": combined_score,
         "risk_level": risk_level,

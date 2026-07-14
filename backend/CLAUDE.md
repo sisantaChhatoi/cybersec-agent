@@ -65,18 +65,25 @@ Mongo via `shared/db.py` (`AsyncMongoClient`); all settings in `shared/config.py
     Age <30d adds +25 to score; <90d adds +10.
   - **Tier 3 LLM reasoning**: already handled — the chat tool passes all signals to
     the agent, which reasons about them in its reply. No separate implementation.
-  - **Tier 4 page + ML** (`check_page_content`, `check_ml_classifier`): BeautifulSoup
-    scans for password fields, sensitive inputs, brand impersonation in title, external
-    form action. ML classifier is LogisticRegression trained on 651K URLs
-    (`malicious_phish.csv`, 4 classes) with TF-IDF char n-grams (2–4) +
-    12 handcrafted URL features. Model at `data/url_classifier.joblib`; retrain
-    via `python train_url_classifier.py`. ML only contributes to score when
-    confidence ≥ 80%.
+  - **Tier 4 page** (`check_page_content`): BeautifulSoup scans for password fields,
+    sensitive inputs, brand impersonation in title, external form action.
+  - **Tier 4 ML** (`check_ml_classifier`): **DISABLED** — off unless
+    `ML_URL_CLASSIFIER_ENABLED=true`. The shipped `data/url_classifier.joblib` scores
+    real bank/Google login pages as phishing (accounts.google.com → 0.86) while missing
+    actual phishing URLs, and it does not match `train_url_classifier.py` (the committed
+    artifact has no TF-IDF stage). Do not re-enable without a retrain **and** a
+    false-positive check against a known-good set of real bank/UPI login pages.
+    sklearn/joblib/pandas live in the `ml` dependency group (not installed by default;
+    sklearn still arrives transitively via sentence-transformers). Imports are lazy, so
+    nothing loads while the flag is off.
   - **External**: Google Safe Browsing v4 (+40 if flagged), VirusTotal (+40 malicious /
     +20 suspicious). urlscan.io was trialled but removed — free tier timeouts.
   - **Scoring**: 0–100; thresholds: suspicious ≥20, high ≥60.
-  - **Docker note**: `Dockerfile` copies `data/` so the model is available in the
-    container. scikit-learn and joblib are in `pyproject.toml` (server group).
+- **Chat tool vs `/link-check` return different shapes on purpose.** The router returns
+  the full structured payload (score, flags, per-source detail) for the UI. The
+  `check_link_safety` chat tool must return a **bare lowercase phrase** with no labels,
+  scores, or vendor names — the small chat model parrots any structure it is given
+  straight into the reply, in English, mid-Hinglish. Don't "enrich" that tool's output.
 - Prompt (`engine.py`): capture-first, check links first, ground via the search tool,
   prefer Hindi/Hinglish, settle in 2–3 clarifications, never ask for OTP/PIN.
 - **Streaming loop** buffers text per round and only yields it when there are no tool

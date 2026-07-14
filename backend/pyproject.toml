@@ -30,10 +30,14 @@ server = [
     "pyjwt>=2.13.0",
     "sentence-transformers>=5.6.0",
     "torch>=2.6",
-    "scikit-learn>=1.5",
-    "joblib>=1.4",
     "sse-starlette>=3.4.5",
     "websockets>=16.0",
+]
+# Only needed to train or run the URL classifier (ML_URL_CLASSIFIER_ENABLED=true).
+ml = [
+    "scikit-learn>=1.5",
+    "joblib>=1.4",
+    "pandas>=2.2",
 ]
 worker = [
     "httpx>=0.28.1",

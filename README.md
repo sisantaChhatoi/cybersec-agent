@@ -86,15 +86,20 @@ flowchart TD
 | 1 | Heuristics: punycode, raw IP, typosquatting, suspicious TLD, scam keywords, shortener detection | `chatbot/link_safety.py · analyze_url()` |
 | 2 | Domain age via RDAP (no API key needed) | `chatbot/link_safety.py · check_domain_age()` |
 | 3 | LLM reasoning — chat agent receives all signals and reasons in its reply | Handled by `ChatbotEngine` + `check_link_safety` tool in `chatbot/tools.py` |
-| 4 | Page content analysis (BeautifulSoup) + ML classifier (LogisticRegression trained on 650K URLs) | `chatbot/link_safety.py · check_page_content()`, `check_ml_classifier()` |
+| 4 | Page content analysis (BeautifulSoup) | `chatbot/link_safety.py · check_page_content()` |
 
 External checks: **Google Safe Browsing v4** and **VirusTotal** (both free tier).
 
-**ML model:** `backend/data/url_classifier.joblib` — LogisticRegression with TF-IDF character n-grams (2–4) + 12 handcrafted URL features. Trained on `malicious_phish.csv` (651K URLs, 4 classes). Retrain:
+**ML classifier — disabled.** An experimental LogisticRegression URL classifier exists
+(`check_ml_classifier`, `train_url_classifier.py`, `backend/data/url_classifier.joblib`) but is
+**off by default** behind `ML_URL_CLASSIFIER_ENABLED`. The shipped model flags real bank and Google
+login pages as phishing while missing actual phishing URLs, so it is not fit to influence a verdict.
+Retraining it requires the `ml` dependency group and a false-positive check against real bank login
+pages before the flag is turned on:
 
 ```bash
 cd backend
-python train_url_classifier.py /path/to/malicious_phish.csv
+uv run --group ml python train_url_classifier.py /path/to/malicious_phish.csv
 ```
 
 ML predictions are only surfaced to the user when confidence ≥ 80%.
