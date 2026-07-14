@@ -1,17 +1,8 @@
-import asyncio
 from typing import Literal
-from urllib.parse import urlparse
 
 from langchain_core.tools import BaseTool, tool
 
-from server.chatbot.link_safety import (
-    analyze_url,
-    check_domain_age,
-    check_gsb,
-    check_vt,
-    domain_changed,
-    unshorten,
-)
+from server.chatbot.link_safety import assess_url
 from server.chatbot.retrieval import retrieve
 from server.models.incident import Incident
 from server.repositories.incident_repo import IncidentRepository
@@ -25,76 +16,28 @@ _REPORT_FIELDS = [
 ]
 
 
+_VERDICT_PHRASE = {
+    "unsafe": "unsafe — this link is a scam/malicious site",
+    "suspicious": "suspicious — this link shows warning signs of a scam site",
+    "safe": "safe — no threats found for this link",
+}
+
+
 @tool
 async def check_link_safety(url: str) -> str:
     """Check whether a URL shared by the user is safe or malicious.
     Call this whenever the user pastes or mentions any link/URL.
     Returns a safe/suspicious/unsafe verdict and why, if flagged."""
-    resolved = await unshorten(url)
-    heuristics = analyze_url(resolved)
-
-    gsb_r, vt_r, age_r = await asyncio.gather(
-        check_gsb(resolved),
-        check_vt(resolved),
-        check_domain_age(resolved),
-        return_exceptions=True,
-    )
-    gsb = gsb_r if isinstance(gsb_r, dict) else None
-    vt = vt_r if isinstance(vt_r, dict) else None
-    age = age_r if isinstance(age_r, dict) else None
-
-    score = heuristics["score"]
-    reasons: list[str] = []
-
-    if gsb is not None and not gsb["safe"]:
-        score += 40
-        threat = (gsb.get("threat") or "").lower()
-        reasons.append(
-            "it is a known phishing site"
-            if "social" in threat
-            else f"it is a known {threat.replace('_', ' ')} site"
-            if threat
-            else "it is a known malicious site"
-        )
-    if vt is not None and isinstance(vt.get("malicious"), int) and vt["malicious"] > 0:
-        score += 40
-        reasons.append("security scanners report it as malicious")
-    elif (
-        vt is not None
-        and isinstance(vt.get("suspicious"), int)
-        and vt["suspicious"] > 0
-    ):
-        score += 20
-        reasons.append("security scanners report it as suspicious")
-
-    if age is not None and age.get("age_days") is not None:
-        days = age["age_days"]
-        if days < 30:
-            score += 25
-            reasons.append("the site was created only days ago")
-        elif days < 90:
-            score += 10
-            reasons.append("the site is less than three months old")
-
-    if gsb is None and vt is None and not heuristics["flags"]:
+    result = await assess_url(url)
+    if not result["checked"]:
         return "Could not check the link right now; try again shortly."
 
-    reasons += heuristics["flags"]
-    if domain_changed(url, resolved):
-        reasons.append(
-            f"it secretly redirects to {urlparse(resolved).hostname or resolved}"
-        )
-
-    combined = min(score, 100)
-    if combined < 25:
-        return "safe — no threats found for this link"
-
-    verdict = (
-        "unsafe — this link is a scam/malicious site"
-        if combined >= 60
-        else "suspicious — this link shows warning signs of a scam site"
-    )
-    return f"{verdict}; {', '.join(reasons)}" if reasons else verdict
+    # Bare prose only. The chat model parrots any structure it is handed — labels,
+    # scores, vendor names — straight into its reply. Structure belongs in the API.
+    phrase = _VERDICT_PHRASE[result["verdict"]]
+    if result["verdict"] == "safe" or not result["reasons"]:
+        return phrase
+    return f"{phrase}; {', '.join(result['reasons'])}"
 
 
 @tool

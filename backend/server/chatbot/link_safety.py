@@ -565,3 +565,118 @@ async def check_vt(url: str) -> dict:
             "suspicious": suspicious,
             "note": None,
         }
+
+
+_HIGH_THRESHOLD = 60
+_SUSPICIOUS_THRESHOLD = 20
+
+_GSB_UNAVAILABLE = {"safe": True, "threat": None}
+_VT_UNAVAILABLE = {"safe": None, "malicious": 0, "suspicious": 0, "note": "unavailable"}
+_AGE_UNAVAILABLE = {"age_days": None, "created": None, "domain": ""}
+_PAGE_UNAVAILABLE = {"available": False, "flags": [], "score": 0}
+
+
+async def assess_url(url: str) -> dict:
+    """Run every link-safety source and combine them into one verdict.
+
+    Single owner of the weights and thresholds — both `/link-check` and the chat
+    tool call this, so a URL can never score differently on the two surfaces.
+    `reasons` are de-branded prose for the chat agent to paraphrase; `flags` and
+    `sources` are the structured detail the UI renders.
+    """
+    resolved = await unshorten(url)
+    heuristics = analyze_url(resolved)
+    ml = check_ml_classifier(resolved)
+
+    gsb_r, vt_r, age_r, page_r = await asyncio.gather(
+        check_gsb(resolved),
+        check_vt(resolved),
+        check_domain_age(resolved),
+        check_page_content(resolved),
+        return_exceptions=True,
+    )
+    gsb: dict = gsb_r if isinstance(gsb_r, dict) else dict(_GSB_UNAVAILABLE)
+    vt: dict = vt_r if isinstance(vt_r, dict) else dict(_VT_UNAVAILABLE)
+    age: dict = age_r if isinstance(age_r, dict) else dict(_AGE_UNAVAILABLE)
+    page: dict = page_r if isinstance(page_r, dict) else dict(_PAGE_UNAVAILABLE)
+
+    score = heuristics["score"]
+    reasons: list[str] = []
+
+    if not gsb["safe"]:
+        score += 40
+        threat = (gsb.get("threat") or "").lower()
+        reasons.append(
+            "it is a known phishing site"
+            if "social" in threat
+            else f"it is a known {threat.replace('_', ' ')} site"
+            if threat
+            else "it is a known malicious site"
+        )
+    if isinstance(vt.get("malicious"), int) and vt["malicious"] > 0:
+        score += 40
+        reasons.append("security scanners report it as malicious")
+    elif isinstance(vt.get("suspicious"), int) and vt["suspicious"] > 0:
+        score += 20
+        reasons.append("security scanners report it as suspicious")
+
+    age_days = age.get("age_days")
+    if age_days is not None:
+        if age_days < 30:
+            score += 25
+            reasons.append("the site was created only days ago")
+        elif age_days < 90:
+            score += 10
+            reasons.append("the site is less than three months old")
+
+    score += page.get("score", 0)
+
+    if ml.get("available") and ml.get("label") in ("phishing", "malware"):
+        confidence = ml.get("confidence") or 0
+        if confidence >= 0.80:
+            score += int(confidence * 30)
+
+    reasons += heuristics["flags"] + page["flags"]
+    if domain_changed(url, resolved):
+        reasons.append(
+            f"it secretly redirects to {urlparse(resolved).hostname or resolved}"
+        )
+
+    combined = min(score, 100)
+    risk_level = (
+        "high"
+        if combined >= _HIGH_THRESHOLD
+        else "suspicious"
+        if combined >= _SUSPICIOUS_THRESHOLD
+        else "low"
+    )
+    verdict = (
+        "unsafe"
+        if risk_level == "high"
+        else "suspicious"
+        if risk_level == "suspicious"
+        else "safe"
+    )
+
+    return {
+        "url": url,
+        "resolved_url": resolved if domain_changed(url, resolved) else None,
+        "verdict": verdict,
+        "risk_score": combined,
+        "risk_level": risk_level,
+        "flags": heuristics["flags"],
+        "reasons": reasons,
+        # No reputation source answered and nothing looked wrong offline — we
+        # genuinely don't know, which is different from "safe".
+        "checked": not (
+            isinstance(gsb_r, BaseException)
+            and isinstance(vt_r, BaseException)
+            and not heuristics["flags"]
+            and not page["available"]
+        ),
+        "domain_age": age,
+        "ml_classifier": ml,
+        "page_analysis": page,
+        "google_safe_browsing": gsb,
+        "virustotal": vt,
+    }

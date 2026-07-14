@@ -55,9 +55,16 @@ Mongo via `shared/db.py` (`AsyncMongoClient`); all settings in `shared/config.py
   *other* incidents). Built per-request with session/user bound.
 - **Shared link-safety helpers** live in `chatbot/link_safety.py` (not in
   `routers/link_check.py`) to avoid a circular import: `deps.py` → `tools.py` →
-  `link_check.py` → `deps.py`. Both the `/link-check` router and the chat tool
-  import `check_gsb`/`check_vt` from there.
-- **Link checker tiers** (`POST /link-check` → `routers/link_check.py`):
+  `link_check.py` → `deps.py`.
+- **`assess_url()` is the single owner of the link-safety weights and thresholds.**
+  Both `/link-check` and the `check_link_safety` chat tool call it and do nothing but
+  present the result — the router renders `flags`/`sources`, the tool renders `reasons`.
+  The scoring used to be copy-pasted into both, and the constants silently drifted
+  (the tool sat at suspicious ≥25 while the router moved to ≥20, and the tool skipped
+  the page tier entirely). Add new signals inside `assess_url`, never in a caller.
+- **Link checker tiers** (all run inside `assess_url`; sources fan out concurrently,
+  so wall-clock is the slowest source, ~1–2s — the page fetch is the *fastest* of them
+  at ~200-300ms, cheaper than VirusTotal or RDAP):
   - **Tier 1 heuristics** (`analyze_url`): punycode, raw IP, `@` in URL, suspicious
     TLD, typosquatting (Levenshtein ≤2 vs brand list), scam keywords, shortener
     detection, excessive subdomains/hyphens. Pure Python, no network.
@@ -65,8 +72,11 @@ Mongo via `shared/db.py` (`AsyncMongoClient`); all settings in `shared/config.py
     Age <30d adds +25 to score; <90d adds +10.
   - **Tier 3 LLM reasoning**: already handled — the chat tool passes all signals to
     the agent, which reasons about them in its reply. No separate implementation.
-  - **Tier 4 page** (`check_page_content`): BeautifulSoup scans for password fields,
-    sensitive inputs, brand impersonation in title, external form action.
+  - **Tier 4 page** (`check_page_content`): BeautifulSoup scans for brand impersonation
+    in the title (+25) and forms posting to another domain (+20). Password/OTP/card
+    fields only score (+25/+20) when one of those two is *also* present — every real
+    bank login page has a password box, so scoring it alone flagged the genuine sites
+    (accounts.google.com used to come out SUSPICIOUS). Tier capped at 60.
   - **Tier 4 ML** (`check_ml_classifier`): **DISABLED** — off unless
     `ML_URL_CLASSIFIER_ENABLED=true`. The shipped `data/url_classifier.joblib` scores
     real bank/Google login pages as phishing (accounts.google.com → 0.86) while missing
@@ -79,11 +89,11 @@ Mongo via `shared/db.py` (`AsyncMongoClient`); all settings in `shared/config.py
   - **External**: Google Safe Browsing v4 (+40 if flagged), VirusTotal (+40 malicious /
     +20 suspicious). urlscan.io was trialled but removed — free tier timeouts.
   - **Scoring**: 0–100; thresholds: suspicious ≥20, high ≥60.
-- **Chat tool vs `/link-check` return different shapes on purpose.** The router returns
-  the full structured payload (score, flags, per-source detail) for the UI. The
-  `check_link_safety` chat tool must return a **bare lowercase phrase** with no labels,
-  scores, or vendor names — the small chat model parrots any structure it is given
-  straight into the reply, in English, mid-Hinglish. Don't "enrich" that tool's output.
+- **Chat tool vs `/link-check` differ only in presentation, never in signals.** The
+  router returns the full structured payload (score, flags, per-source detail) for the
+  UI. The `check_link_safety` chat tool must return a **bare lowercase phrase** with no
+  labels, scores, or vendor names — the small chat model parrots any structure it is
+  given straight into the reply, in English, mid-Hinglish. Don't "enrich" that output.
 - Prompt (`engine.py`): capture-first, check links first, ground via the search tool,
   prefer Hindi/Hinglish, settle in 2–3 clarifications, never ask for OTP/PIN.
 - **Streaming loop** buffers text per round and only yields it when there are no tool
