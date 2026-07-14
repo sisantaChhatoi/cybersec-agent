@@ -8,3 +8,7 @@
 # built app binaries (pulled from EAS)
 *.apk
 *.aab
+
+# ML training data (large CSV, not committed)
+malicious_phish.csv
+*.csv

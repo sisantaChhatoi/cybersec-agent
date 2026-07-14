@@ -1,9 +1,8 @@
-import asyncio
 from typing import Literal
 
 from langchain_core.tools import BaseTool, tool
 
-from server.chatbot.link_safety import check_gsb, check_vt
+from server.chatbot.link_safety import assess_url
 from server.chatbot.retrieval import retrieve
 from server.models.incident import Incident
 from server.repositories.incident_repo import IncidentRepository
@@ -17,29 +16,28 @@ _REPORT_FIELDS = [
 ]
 
 
+_VERDICT_PHRASE = {
+    "unsafe": "unsafe — this link is a scam/malicious site",
+    "suspicious": "suspicious — this link shows warning signs of a scam site",
+    "safe": "safe — no threats found for this link",
+}
+
+
 @tool
 async def check_link_safety(url: str) -> str:
     """Check whether a URL shared by the user is safe or malicious.
     Call this whenever the user pastes or mentions any link/URL.
-    Returns a safe/unsafe verdict and the threat type if flagged."""
-    gsb_r, vt_r = await asyncio.gather(
-        check_gsb(url), check_vt(url), return_exceptions=True
-    )
-    gsb = gsb_r if isinstance(gsb_r, dict) else None
-    vt = vt_r if isinstance(vt_r, dict) else None
-    if gsb is None and vt is None:
+    Returns a safe/suspicious/unsafe verdict and why, if flagged."""
+    result = await assess_url(url)
+    if not result["checked"]:
         return "Could not check the link right now; try again shortly."
 
-    unsafe = (gsb is not None and not gsb["safe"]) or (
-        vt is not None and vt.get("safe") is False
-    )
-    if not unsafe:
-        return "safe — no threats found for this link"
-    threat = ""
-    if gsb is not None and not gsb["safe"] and gsb.get("threat"):
-        t = gsb["threat"].lower()
-        threat = " (phishing)" if "social" in t else f" ({t.replace('_', ' ')})"
-    return f"unsafe — this link is flagged as a scam/malicious site{threat}"
+    # Bare prose only. The chat model parrots any structure it is handed — labels,
+    # scores, vendor names — straight into its reply. Structure belongs in the API.
+    phrase = _VERDICT_PHRASE[result["verdict"]]
+    if result["verdict"] == "safe" or not result["reasons"]:
+        return phrase
+    return f"{phrase}; {', '.join(result['reasons'])}"
 
 
 @tool

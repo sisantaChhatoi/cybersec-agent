@@ -1,11 +1,13 @@
-"""Link safety checker — Google Safe Browsing + VirusTotal."""
+"""Link safety checker — scoring lives in chatbot/link_safety.py, shared with the chat tool."""
 
 from fastapi import APIRouter, Depends
 
-from server.chatbot.link_safety import check_gsb, check_vt
+from server.chatbot.link_safety import assess_url
 from server.deps import get_current_user
 
 router = APIRouter(prefix="/link-check", tags=["link-check"])
+
+_INTERNAL_FIELDS = ("reasons", "checked")
 
 
 @router.post("")
@@ -17,14 +19,5 @@ async def check_link(
     if not url:
         return {"error": "url is required"}
 
-    gsb, vt = await check_gsb(url), await check_vt(url)
-
-    overall_safe = gsb["safe"] and (vt["safe"] is not False)
-    verdict = "safe" if overall_safe else "unsafe"
-
-    return {
-        "url": url,
-        "verdict": verdict,
-        "google_safe_browsing": gsb,
-        "virustotal": vt,
-    }
+    assessment = await assess_url(url)
+    return {k: v for k, v in assessment.items() if k not in _INTERNAL_FIELDS}

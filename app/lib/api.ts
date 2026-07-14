@@ -90,7 +90,15 @@ export type CallStats = {
 
 export type LinkCheckResult = {
   url: string;
-  verdict: 'safe' | 'unsafe';
+  resolved_url: string | null;
+  verdict: 'safe' | 'suspicious' | 'unsafe';
+  risk_score: number;
+  risk_level: 'low' | 'suspicious' | 'high';
+  flags: string[];
+  domain_age: { age_days: number | null; created: string | null; domain: string };
+
+  ml_classifier: { available: boolean; label: string | null; confidence: number | null };
+  page_analysis: { available: boolean; flags: string[]; score: number };
   google_safe_browsing: { safe: boolean; threat: string | null };
   virustotal: { safe: boolean | null; malicious: number; suspicious: number; note: string | null };
 };

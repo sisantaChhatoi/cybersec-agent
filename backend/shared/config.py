@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     sarvam_chat_model: str = "sarvam-105b"
     sarvam_base_url: str = "https://api.sarvam.ai/v1"
 
+    # Off: the shipped model misclassifies real bank/Google login pages as phishing.
+    # Needs a retrain + validation against a known-good set before it can be trusted.
+    ml_url_classifier_enabled: bool = False
+
     embedding_model: str = "paraphrase-multilingual-MiniLM-L12-v2"
     retrieval_top_k: int = 4
     retrieval_min_score: float = 0.35
@@ -37,6 +41,7 @@ class Settings(BaseSettings):
 
     google_safe_browsing_key: str = ""
     virustotal_key: str = ""
+    urlscan_api_key: str = ""
 
     stt_provider: str = "sarvam"
     stt_language_code: str = "unknown"
