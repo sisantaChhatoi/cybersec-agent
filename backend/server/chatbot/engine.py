@@ -80,10 +80,17 @@ class UserContext:
 
 
 def _profile_block(ctx: UserContext) -> str:
+    primary = ctx.languages.split(",")[0].strip()
     return (
         "\n\nUSER PROFILE (from their saved account — already known, never ask for these):\n"
-        f"- Preferred language(s), primary first: {ctx.languages}. Reply in the primary "
-        "language unless the user writes in another.\n"
+        f"- Preferred languages, primary first: {ctx.languages}.\n"
+        f"- LANGUAGE RULE — obey exactly: reply in whichever of their preferred languages "
+        f"({ctx.languages}) the user is actually writing in. If they write a substantive message "
+        f"in ANY one of these, reply in THAT SAME language (so a message in their secondary or "
+        f"tertiary gets a reply in that language, not {primary}). Fall back to {primary} only "
+        f"when the message is a bare greeting, very short, or in a language NOT on their list "
+        f"(e.g. an English 'hi' — that is NOT a request for English). Never default to English "
+        f"unless {primary} is English.\n"
         f"- Location: {ctx.location}. Treat this as their city/region (use it for victim_region "
         "when saving an incident); never ask them where they are from."
     )
