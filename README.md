@@ -20,8 +20,8 @@ call is still happening.
   a "scam" label.
 - 💬 **Chat risk checks** — describe anything suspicious and get a risk assessment,
   backed by graph intelligence over related signals.
-- 🔗 **Link safety checker** — 4-tier URL analysis: heuristics, domain age (RDAP),
-  page content analysis, ML classifier, Google Safe Browsing, and VirusTotal.
+- 🔗 **Link safety checker** — 4-tier URL analysis (heuristics, domain age, page
+  content, LLM reasoning) cross-checked against Google Safe Browsing and VirusTotal.
 - 🗺️ **Geospatial intelligence** — cybercrime hotspots across India.
 - 🔄 **Evolving detection** — the system tracks the latest fraud patterns over time.
 
@@ -73,9 +73,13 @@ flowchart TD
 - 🎙️ **STT:** Sarvam streaming (Hinglish / code-mixing, 16kHz PCM).
 - 🧠 **Detection LLM:** Groq (Llama 3.3 70B), strict-JSON output with hysteresis to
   avoid false alarms.
+- 💬 **Chat / RAG:** LangChain tool-calling agent (Sarvam LLM) with FAISS retrieval over a
+  fraud knowledge base, using multilingual MiniLM embeddings.
+- 🕸️ **Graph intelligence:** NetworkX + Louvain build a co-occurrence fraud network (rings,
+  risk scoring, geospatial hotspots), loaded into Neo4j.
 - ⚙️ **API:** FastAPI + MongoDB (`pymongo` async).
 - 📨 **Push:** Expo Push API → FCM.
-- 🐳 **Deploy:** Docker Compose (server + worker + mongo); LiveKit is Cloud-hosted.
+- 🐳 **Deploy:** Docker Compose (server + worker + mongo + neo4j); LiveKit is Cloud-hosted.
 
 ## 🔗 Link Safety Checker
 
@@ -90,26 +94,12 @@ flowchart TD
 
 External checks: **Google Safe Browsing v4** and **VirusTotal** (both free tier).
 
-**ML classifier — disabled.** An experimental LogisticRegression URL classifier exists
-(`check_ml_classifier`, `train_url_classifier.py`, `backend/data/url_classifier.joblib`) but is
-**off by default** behind `ML_URL_CLASSIFIER_ENABLED`. The shipped model flags real bank and Google
-login pages as phishing while missing actual phishing URLs, so it is not fit to influence a verdict.
-Retraining it requires the `ml` dependency group and a false-positive check against real bank login
-pages before the flag is turned on:
-
-```bash
-cd backend
-uv run --group ml python train_url_classifier.py /path/to/malicious_phish.csv
-```
-
-ML predictions are only surfaced to the user when confidence ≥ 80%.
-
 ## 🚀 Running locally
 
 Backend (single `uv` project rooted at `backend/`):
 
 ```bash
-docker compose up                                   # server + worker + mongo
+docker compose up                                   # server + worker + mongo + neo4j
 # or individually:
 uv run uvicorn server.app:app --host 0.0.0.0 --port 8000
 uv run python -m worker.agent dev
